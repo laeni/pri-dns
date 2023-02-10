@@ -15,7 +15,7 @@ func TestParse(t *testing.T) {
 	}{
 		{
 			"正常配置",
-			`pridns {
+			`pri-dns {
 							adminPassword admin
 							mysql {
 								dataSourceName xx
@@ -30,27 +30,27 @@ func TestParse(t *testing.T) {
 		},
 		{
 			"存在多余指令",
-			`pridns xx1 {
+			`pri-dns xx1 {
 						}`,
 			nil,
 			true,
 		},
 		{
 			"重复配置-插件",
-			`pridns {
+			`pri-dns {
 							adminPassword admin
 							mysql {
 								dataSourceName xx
 							}
 						}
-						pridns {
+						pri-dns {
 						}`,
 			nil,
 			true,
 		},
 		{
 			"重复配置-存储-mysql",
-			`pridns {
+			`pri-dns {
 							mysql {
 								dataSourceName xx
 							}
@@ -61,7 +61,7 @@ func TestParse(t *testing.T) {
 		},
 		{
 			"重复配置-存储-etcd",
-			`pridns {
+			`pri-dns {
 							etcd {
 							}
 							etcd
@@ -71,7 +71,7 @@ func TestParse(t *testing.T) {
 		},
 		{
 			"重复配置-存储-redis",
-			`pridns {
+			`pri-dns {
 							redis {
 							}
 							redis
@@ -81,7 +81,7 @@ func TestParse(t *testing.T) {
 		},
 		{
 			"不支持的配置-root",
-			`pridns {
+			`pri-dns {
 							not_support v
 						}`,
 			nil,
@@ -89,7 +89,7 @@ func TestParse(t *testing.T) {
 		},
 		{
 			"不支持的配置-mysql",
-			`pridns {
+			`pri-dns {
 							mysql {
 								not_support v
 							}
@@ -99,7 +99,7 @@ func TestParse(t *testing.T) {
 		},
 		{
 			"不支持的配置-etcd",
-			`pridns {
+			`pri-dns {
 							etcd {
 								not_support v
 							}
@@ -109,7 +109,7 @@ func TestParse(t *testing.T) {
 		},
 		{
 			"不支持的配置-redis",
-			`pridns {
+			`pri-dns {
 							redis {
 								not_support v
 							}
@@ -119,7 +119,7 @@ func TestParse(t *testing.T) {
 		},
 		{
 			"没有配置存储",
-			`pridns {
+			`pri-dns {
 							adminPassword admin
 						}`,
 			nil,

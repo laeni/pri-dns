@@ -1,4 +1,4 @@
-module github.com/laeni/pridns
+module github.com/laeni/pri-dns
 
 go 1.19
 

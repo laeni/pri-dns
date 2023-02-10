@@ -15,7 +15,7 @@
 ## Syntax
 
 ```Corefile
-pridns {
+pri-dns {
     dataSourceName DATA_SOURCE_NAME
 }
 ```
@@ -37,8 +37,8 @@ TODO
 使用本地MySQL数据库:
 
 ```Corefile
-pridns {
-    dataSourceName root:@tcp(127.0.0.1:3306)/pridns?parseTime=true&loc=Asia%2FShanghai
+pri-dns {
+    dataSourceName root:@tcp(127.0.0.1:3306)/pri-dns?parseTime=true&loc=Asia%2FShanghai
 }
 ```
 

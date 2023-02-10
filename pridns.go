@@ -5,10 +5,11 @@ import (
 	"github.com/coredns/coredns/plugin"
 	clog "github.com/coredns/coredns/plugin/pkg/log"
 	"github.com/coredns/coredns/request"
+	"github.com/laeni/pri-dns/db"
 	"github.com/miekg/dns"
 )
 
-var log = clog.NewWithPlugin("pridns")
+var log = clog.NewWithPlugin("pri-dns")
 
 const (
 	storeTypeMySQL = "mysql" // 表示使用 mysql 作为存储介质
@@ -57,4 +58,4 @@ func (d PriDns) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg) 
 }
 
 // Name implements the plugin.Handle interface.
-func (d PriDns) Name() string { return "pridns" }
+func (d PriDns) Name() string { return "pri-dns" }

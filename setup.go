@@ -4,9 +4,11 @@ import (
 	"github.com/coredns/caddy"
 	"github.com/coredns/coredns/core/dnsserver"
 	"github.com/coredns/coredns/plugin"
+	"github.com/laeni/pri-dns/db"
+	"github.com/laeni/pri-dns/db/mysql"
 )
 
-func init() { plugin.Register("pridns", setup) }
+func init() { plugin.Register("pri-dns", setup) }
 
 func setup(c *caddy.Controller) error {
 	config, err := parse(c)
