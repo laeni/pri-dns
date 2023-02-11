@@ -1,9 +1,11 @@
 package pridns
 
 import (
+	"database/sql"
 	"github.com/coredns/caddy"
 	"github.com/coredns/coredns/core/dnsserver"
 	"github.com/coredns/coredns/plugin"
+	_ "github.com/go-sql-driver/mysql"
 	"github.com/laeni/pri-dns/db"
 	"github.com/laeni/pri-dns/db/mysql"
 )
@@ -16,10 +18,16 @@ func setup(c *caddy.Controller) error {
 		return err
 	}
 
+	store, err := initDb(config)
+	if err != nil {
+		return err
+	}
+
 	dnsserver.GetConfig(c).AddPlugin(func(next plugin.Handler) plugin.Handler {
 		return &PriDns{
 			Config: config,
 			Next:   next,
+			Store:  store,
 		}
 	})
 
@@ -30,13 +38,11 @@ func parse(c *caddy.Controller) (*Config, error) {
 	config := &Config{}
 
 	// 解析
-	i := 0
-	for c.Next() {
+	for i := 1; c.Next(); i++ {
 		// 同一个插件链只允许定义一次
-		if i > 0 {
+		if i > 1 {
 			return nil, plugin.ErrOnce
 		}
-		i++
 
 		// 目前不需要指令
 		args := c.RemainingArgs()
@@ -46,6 +52,7 @@ func parse(c *caddy.Controller) (*Config, error) {
 
 		// 进入到配置块中（由于 caddyfile.Dispenser 不支持嵌套块，所以这里不能使用 NextBlock()）
 		if c.Next() && c.Val() == "{" {
+			// 循环解析大块中的每一项配置（注意：这里的'}'为大块结束，与上一行‘if’中的'{'对应，大块中的小块需确保在一次解析中处理完成）
 			for c.Next() && c.Val() != "}" {
 				switch c.Val() {
 				case "adminPassword":
@@ -108,4 +115,20 @@ func parse(c *caddy.Controller) (*Config, error) {
 	}
 
 	return config, nil
+}
+
+func initDb(config *Config) (db.Store, error) {
+	switch config.storeType {
+	case storeTypeMySQL:
+		d, err := sql.Open("mysql", config.mySQL.dataSourceName)
+		if err != nil {
+			log.Fatal(err)
+		}
+		caddy.OnProcessExit = append(caddy.OnProcessExit, func() {
+			_ = d.Close()
+		})
+		store := mysql.NewStore(d)
+		return &store, nil
+	}
+	return nil, nil
 }
