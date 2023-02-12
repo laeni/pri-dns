@@ -1,6 +1,7 @@
 package db
 
 import (
+	"context"
 	"database/sql"
 	"github.com/laeni/pri-dns/types"
 )
@@ -10,7 +11,7 @@ type Store interface {
 	FindForwardByClient(host string) []Forward
 
 	// FindDomainByHostAndName 查询 qname 的解析记录。如果 host 不为空，则查询host下的解析，如果为空则只查询全局解析
-	FindDomainByHostAndName(host, qname string) []Domain
+	FindDomainByHostAndName(ctx context.Context, host, qname string) []Domain
 }
 
 // Domain 解析记录表.

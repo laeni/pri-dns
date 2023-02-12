@@ -47,7 +47,7 @@ func (d PriDns) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg) 
 	log.Infof("qname: %s RemoteIp: %s Type: %s QType: %v Class: %s QClass: %v",
 		qname, state.IP(), state.Type(), state.QType(), state.Class(), state.QClass())
 
-	answers := handQuery(d, state, qname[:len(qname)-1], state.IP())
+	answers := handQuery(d, ctx, state, qname[:len(qname)-1], state.IP())
 
 	if len(answers) == 0 {
 		return plugin.NextOrFailure(d.Name(), d.Next, ctx, w, r)
@@ -74,7 +74,7 @@ func (d PriDns) Name() string { return "pri-dns" }
 //  1. 先查询本地添加的解析
 //  2. 如果本地没有对应解析则根据规则转发给上游服务器处理
 //     如果在规则列表中，则转发到根据规则中指定的上游服务器，否则让下一个插件处理
-func handQuery(d PriDns, state request.Request, qname string, remoteIp string) []dns.RR {
+func handQuery(d PriDns, ctx context.Context, state request.Request, qname string, remoteIp string) []dns.RR {
 	// 目前该插件只处理 IPv4 和 IPv6 查询
 	if (state.QType() != dns.TypeA && state.QType() != dns.TypeAAAA) || (state.QClass() != dns.ClassINET) {
 		return nil
@@ -82,7 +82,7 @@ func handQuery(d PriDns, state request.Request, qname string, remoteIp string) [
 
 	// 依次查询私有解析和全局解析
 	for _, s := range []string{remoteIp, ""} {
-		domains := d.Store.FindDomainByHostAndName(s, qname)
+		domains := d.Store.FindDomainByHostAndName(ctx, s, qname)
 		// 查询私有解析,查询后需要过滤掉不需要的（由于查询时一次性查询可能需要的，所以这里需要过滤掉不需要的）
 		domains, deny := filterDomain(qname, domains)
 		if len(domains) == 0 || deny {

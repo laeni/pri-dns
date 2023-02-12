@@ -9,29 +9,27 @@ import (
 )
 
 type StoreMysql struct {
-	ctx context.Context
-	db  *sql.DB
+	db *sql.DB
 }
 
 func NewStore(db *sql.DB) StoreMysql {
-	ctx := context.Background()
-	return StoreMysql{db: db, ctx: ctx}
+	return StoreMysql{db: db}
 }
 
 func (s *StoreMysql) FindForwardByClient(host string) []db.Forward {
 	return nil
 }
 
-func (s *StoreMysql) FindDomainByHostAndName(host, name string) []db.Domain {
+func (s *StoreMysql) FindDomainByHostAndName(ctx context.Context, host, name string) []db.Domain {
 	names := util.GenAllMatchDomain(name)
 
 	queries := New(s.db)
 	var domainTemps []Domain
 	var err error
 	if host != "" {
-		domainTemps, err = queries.FindDomainByHostAndNameLike(s.ctx, host, names)
+		domainTemps, err = queries.FindDomainByHostAndNameLike(ctx, host, names)
 	} else {
-		domainTemps, err = queries.FindDomainGlobalByName(s.ctx, names)
+		domainTemps, err = queries.FindDomainGlobalByName(ctx, names)
 	}
 	if err != nil {
 		log.Error("从数据库查询解析记录失败", err)
