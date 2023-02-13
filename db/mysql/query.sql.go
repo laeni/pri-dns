@@ -9,19 +9,6 @@ import (
 	"context"
 )
 
-const countForward = `-- name: CountForward :one
-select count(*)
-from forward
-`
-
-// CountForward 统计forward记录数
-func (q *Queries) CountForward(ctx context.Context) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countForward)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
 const findDomainByHostAndNameLike1 = `-- name: FindDomainByHostAndNameLike1 :many
 select id, host, name, value, ttl, status, type, priority, create_time, update_time
 from domain
@@ -640,6 +627,628 @@ func (q *Queries) FindDomainGlobalByName6(ctx context.Context, arg FindDomainGlo
 			&i.Status,
 			&i.Type,
 			&i.Priority,
+			&i.CreateTime,
+			&i.UpdateTime,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const findForwardByHostAndNameLike1 = `-- name: FindForwardByHostAndNameLike1 :many
+select id, host, name, dns_svr, history, type, status, create_time, update_time
+from forward
+where host = ?
+  and name = ?
+`
+
+type FindForwardByHostAndNameLike1Params struct {
+	Host string
+	Name string
+}
+
+// FindForwardByHostAndNameLike1 查询客户端专属的转发
+func (q *Queries) FindForwardByHostAndNameLike1(ctx context.Context, arg FindForwardByHostAndNameLike1Params) ([]Forward, error) {
+	rows, err := q.db.QueryContext(ctx, findForwardByHostAndNameLike1, arg.Host, arg.Name)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Forward
+	for rows.Next() {
+		var i Forward
+		if err := rows.Scan(
+			&i.ID,
+			&i.Host,
+			&i.Name,
+			&i.DnsSvr,
+			&i.History,
+			&i.Type,
+			&i.Status,
+			&i.CreateTime,
+			&i.UpdateTime,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const findForwardByHostAndNameLike2 = `-- name: FindForwardByHostAndNameLike2 :many
+select id, host, name, dns_svr, history, type, status, create_time, update_time
+from forward
+where host = ?
+  and (name = ? or name = ?)
+`
+
+type FindForwardByHostAndNameLike2Params struct {
+	Host   string
+	Name   string
+	Name_2 string
+}
+
+// FindForwardByHostAndNameLike2 查询客户端专属的解析
+func (q *Queries) FindForwardByHostAndNameLike2(ctx context.Context, arg FindForwardByHostAndNameLike2Params) ([]Forward, error) {
+	rows, err := q.db.QueryContext(ctx, findForwardByHostAndNameLike2, arg.Host, arg.Name, arg.Name_2)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Forward
+	for rows.Next() {
+		var i Forward
+		if err := rows.Scan(
+			&i.ID,
+			&i.Host,
+			&i.Name,
+			&i.DnsSvr,
+			&i.History,
+			&i.Type,
+			&i.Status,
+			&i.CreateTime,
+			&i.UpdateTime,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const findForwardByHostAndNameLike3 = `-- name: FindForwardByHostAndNameLike3 :many
+select id, host, name, dns_svr, history, type, status, create_time, update_time
+from forward
+where host = ?
+  and (name = ? or name = ? or name = ?)
+`
+
+type FindForwardByHostAndNameLike3Params struct {
+	Host   string
+	Name   string
+	Name_2 string
+	Name_3 string
+}
+
+// FindForwardByHostAndNameLike3 查询客户端专属的解析
+func (q *Queries) FindForwardByHostAndNameLike3(ctx context.Context, arg FindForwardByHostAndNameLike3Params) ([]Forward, error) {
+	rows, err := q.db.QueryContext(ctx, findForwardByHostAndNameLike3,
+		arg.Host,
+		arg.Name,
+		arg.Name_2,
+		arg.Name_3,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Forward
+	for rows.Next() {
+		var i Forward
+		if err := rows.Scan(
+			&i.ID,
+			&i.Host,
+			&i.Name,
+			&i.DnsSvr,
+			&i.History,
+			&i.Type,
+			&i.Status,
+			&i.CreateTime,
+			&i.UpdateTime,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const findForwardByHostAndNameLike4 = `-- name: FindForwardByHostAndNameLike4 :many
+select id, host, name, dns_svr, history, type, status, create_time, update_time
+from forward
+where host = ?
+  and (name = ? or name = ? or name = ? or name = ?)
+`
+
+type FindForwardByHostAndNameLike4Params struct {
+	Host   string
+	Name   string
+	Name_2 string
+	Name_3 string
+	Name_4 string
+}
+
+// FindForwardByHostAndNameLike4 查询客户端专属的解析
+func (q *Queries) FindForwardByHostAndNameLike4(ctx context.Context, arg FindForwardByHostAndNameLike4Params) ([]Forward, error) {
+	rows, err := q.db.QueryContext(ctx, findForwardByHostAndNameLike4,
+		arg.Host,
+		arg.Name,
+		arg.Name_2,
+		arg.Name_3,
+		arg.Name_4,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Forward
+	for rows.Next() {
+		var i Forward
+		if err := rows.Scan(
+			&i.ID,
+			&i.Host,
+			&i.Name,
+			&i.DnsSvr,
+			&i.History,
+			&i.Type,
+			&i.Status,
+			&i.CreateTime,
+			&i.UpdateTime,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const findForwardByHostAndNameLike5 = `-- name: FindForwardByHostAndNameLike5 :many
+select id, host, name, dns_svr, history, type, status, create_time, update_time
+from forward
+where host = ?
+  and (name = ? or name = ? or name = ? or name = ? or name = ?)
+`
+
+type FindForwardByHostAndNameLike5Params struct {
+	Host   string
+	Name   string
+	Name_2 string
+	Name_3 string
+	Name_4 string
+	Name_5 string
+}
+
+// FindForwardByHostAndNameLike5 查询客户端专属的解析
+func (q *Queries) FindForwardByHostAndNameLike5(ctx context.Context, arg FindForwardByHostAndNameLike5Params) ([]Forward, error) {
+	rows, err := q.db.QueryContext(ctx, findForwardByHostAndNameLike5,
+		arg.Host,
+		arg.Name,
+		arg.Name_2,
+		arg.Name_3,
+		arg.Name_4,
+		arg.Name_5,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Forward
+	for rows.Next() {
+		var i Forward
+		if err := rows.Scan(
+			&i.ID,
+			&i.Host,
+			&i.Name,
+			&i.DnsSvr,
+			&i.History,
+			&i.Type,
+			&i.Status,
+			&i.CreateTime,
+			&i.UpdateTime,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const findForwardByHostAndNameLike6 = `-- name: FindForwardByHostAndNameLike6 :many
+select id, host, name, dns_svr, history, type, status, create_time, update_time
+from forward
+where host = ?
+  and (name = ? or name = ? or name = ? or name = ? or name = ? or name = ?)
+`
+
+type FindForwardByHostAndNameLike6Params struct {
+	Host   string
+	Name   string
+	Name_2 string
+	Name_3 string
+	Name_4 string
+	Name_5 string
+	Name_6 string
+}
+
+// FindForwardByHostAndNameLike6 查询客户端专属的解析
+func (q *Queries) FindForwardByHostAndNameLike6(ctx context.Context, arg FindForwardByHostAndNameLike6Params) ([]Forward, error) {
+	rows, err := q.db.QueryContext(ctx, findForwardByHostAndNameLike6,
+		arg.Host,
+		arg.Name,
+		arg.Name_2,
+		arg.Name_3,
+		arg.Name_4,
+		arg.Name_5,
+		arg.Name_6,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Forward
+	for rows.Next() {
+		var i Forward
+		if err := rows.Scan(
+			&i.ID,
+			&i.Host,
+			&i.Name,
+			&i.DnsSvr,
+			&i.History,
+			&i.Type,
+			&i.Status,
+			&i.CreateTime,
+			&i.UpdateTime,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const findForwardGlobalByName1 = `-- name: FindForwardGlobalByName1 :many
+select id, host, name, dns_svr, history, type, status, create_time, update_time
+from ` + "`" + `forward` + "`" + `
+where ` + "`" + `name` + "`" + ` = ?
+    and ` + "`" + `host` + "`" + ` = ''
+   or ` + "`" + `host` + "`" + ` is null
+`
+
+// FindForwardGlobalByName1 查询指定域名的全局解析
+func (q *Queries) FindForwardGlobalByName1(ctx context.Context, name string) ([]Forward, error) {
+	rows, err := q.db.QueryContext(ctx, findForwardGlobalByName1, name)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Forward
+	for rows.Next() {
+		var i Forward
+		if err := rows.Scan(
+			&i.ID,
+			&i.Host,
+			&i.Name,
+			&i.DnsSvr,
+			&i.History,
+			&i.Type,
+			&i.Status,
+			&i.CreateTime,
+			&i.UpdateTime,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const findForwardGlobalByName2 = `-- name: FindForwardGlobalByName2 :many
+select id, host, name, dns_svr, history, type, status, create_time, update_time
+from ` + "`" + `forward` + "`" + `
+where (` + "`" + `name` + "`" + ` = ? or ` + "`" + `name` + "`" + ` = ?)
+    and ` + "`" + `host` + "`" + ` = ''
+   or ` + "`" + `host` + "`" + ` is null
+`
+
+type FindForwardGlobalByName2Params struct {
+	Name   string
+	Name_2 string
+}
+
+// FindForwardGlobalByName2 查询指定域名的全局解析
+func (q *Queries) FindForwardGlobalByName2(ctx context.Context, arg FindForwardGlobalByName2Params) ([]Forward, error) {
+	rows, err := q.db.QueryContext(ctx, findForwardGlobalByName2, arg.Name, arg.Name_2)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Forward
+	for rows.Next() {
+		var i Forward
+		if err := rows.Scan(
+			&i.ID,
+			&i.Host,
+			&i.Name,
+			&i.DnsSvr,
+			&i.History,
+			&i.Type,
+			&i.Status,
+			&i.CreateTime,
+			&i.UpdateTime,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const findForwardGlobalByName3 = `-- name: FindForwardGlobalByName3 :many
+select id, host, name, dns_svr, history, type, status, create_time, update_time
+from ` + "`" + `forward` + "`" + `
+where (` + "`" + `name` + "`" + ` = ? or ` + "`" + `name` + "`" + ` = ? or ` + "`" + `name` + "`" + ` = ?)
+    and ` + "`" + `host` + "`" + ` = ''
+   or ` + "`" + `host` + "`" + ` is null
+`
+
+type FindForwardGlobalByName3Params struct {
+	Name   string
+	Name_2 string
+	Name_3 string
+}
+
+// FindForwardGlobalByName3 查询指定域名的全局解析
+func (q *Queries) FindForwardGlobalByName3(ctx context.Context, arg FindForwardGlobalByName3Params) ([]Forward, error) {
+	rows, err := q.db.QueryContext(ctx, findForwardGlobalByName3, arg.Name, arg.Name_2, arg.Name_3)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Forward
+	for rows.Next() {
+		var i Forward
+		if err := rows.Scan(
+			&i.ID,
+			&i.Host,
+			&i.Name,
+			&i.DnsSvr,
+			&i.History,
+			&i.Type,
+			&i.Status,
+			&i.CreateTime,
+			&i.UpdateTime,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const findForwardGlobalByName4 = `-- name: FindForwardGlobalByName4 :many
+select id, host, name, dns_svr, history, type, status, create_time, update_time
+from ` + "`" + `forward` + "`" + `
+where (` + "`" + `name` + "`" + ` = ? or ` + "`" + `name` + "`" + ` = ? or ` + "`" + `name` + "`" + ` = ? or ` + "`" + `name` + "`" + ` = ?)
+    and ` + "`" + `host` + "`" + ` = ''
+   or ` + "`" + `host` + "`" + ` is null
+`
+
+type FindForwardGlobalByName4Params struct {
+	Name   string
+	Name_2 string
+	Name_3 string
+	Name_4 string
+}
+
+// FindForwardGlobalByName4 查询指定域名的全局解析
+func (q *Queries) FindForwardGlobalByName4(ctx context.Context, arg FindForwardGlobalByName4Params) ([]Forward, error) {
+	rows, err := q.db.QueryContext(ctx, findForwardGlobalByName4,
+		arg.Name,
+		arg.Name_2,
+		arg.Name_3,
+		arg.Name_4,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Forward
+	for rows.Next() {
+		var i Forward
+		if err := rows.Scan(
+			&i.ID,
+			&i.Host,
+			&i.Name,
+			&i.DnsSvr,
+			&i.History,
+			&i.Type,
+			&i.Status,
+			&i.CreateTime,
+			&i.UpdateTime,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const findForwardGlobalByName5 = `-- name: FindForwardGlobalByName5 :many
+select id, host, name, dns_svr, history, type, status, create_time, update_time
+from ` + "`" + `forward` + "`" + `
+where (` + "`" + `name` + "`" + ` = ? or ` + "`" + `name` + "`" + ` = ? or ` + "`" + `name` + "`" + ` = ? or ` + "`" + `name` + "`" + ` = ? or ` + "`" + `name` + "`" + ` = ?)
+    and ` + "`" + `host` + "`" + ` = ''
+   or ` + "`" + `host` + "`" + ` is null
+`
+
+type FindForwardGlobalByName5Params struct {
+	Name   string
+	Name_2 string
+	Name_3 string
+	Name_4 string
+	Name_5 string
+}
+
+// FindForwardGlobalByName5 查询指定域名的全局解析
+func (q *Queries) FindForwardGlobalByName5(ctx context.Context, arg FindForwardGlobalByName5Params) ([]Forward, error) {
+	rows, err := q.db.QueryContext(ctx, findForwardGlobalByName5,
+		arg.Name,
+		arg.Name_2,
+		arg.Name_3,
+		arg.Name_4,
+		arg.Name_5,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Forward
+	for rows.Next() {
+		var i Forward
+		if err := rows.Scan(
+			&i.ID,
+			&i.Host,
+			&i.Name,
+			&i.DnsSvr,
+			&i.History,
+			&i.Type,
+			&i.Status,
+			&i.CreateTime,
+			&i.UpdateTime,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const findForwardGlobalByName6 = `-- name: FindForwardGlobalByName6 :many
+select id, host, name, dns_svr, history, type, status, create_time, update_time
+from ` + "`" + `forward` + "`" + `
+where (` + "`" + `name` + "`" + ` = ? or ` + "`" + `name` + "`" + ` = ? or ` + "`" + `name` + "`" + ` = ? or ` + "`" + `name` + "`" + ` = ? or ` + "`" + `name` + "`" + ` = ? or ` + "`" + `name` + "`" + ` = ?)
+    and ` + "`" + `host` + "`" + ` = ''
+   or ` + "`" + `host` + "`" + ` is null
+`
+
+type FindForwardGlobalByName6Params struct {
+	Name   string
+	Name_2 string
+	Name_3 string
+	Name_4 string
+	Name_5 string
+	Name_6 string
+}
+
+// FindForwardGlobalByName6 查询指定域名的全局解析
+func (q *Queries) FindForwardGlobalByName6(ctx context.Context, arg FindForwardGlobalByName6Params) ([]Forward, error) {
+	rows, err := q.db.QueryContext(ctx, findForwardGlobalByName6,
+		arg.Name,
+		arg.Name_2,
+		arg.Name_3,
+		arg.Name_4,
+		arg.Name_5,
+		arg.Name_6,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Forward
+	for rows.Next() {
+		var i Forward
+		if err := rows.Scan(
+			&i.ID,
+			&i.Host,
+			&i.Name,
+			&i.DnsSvr,
+			&i.History,
+			&i.Type,
+			&i.Status,
 			&i.CreateTime,
 			&i.UpdateTime,
 		); err != nil {

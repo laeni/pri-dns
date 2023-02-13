@@ -52,24 +52,6 @@ pri-dns {
 
 ## 数据库设计
 
-### 客户端配置表 - client_config
-
-| 列名           | 数据类型 | 注释                                                         |
-| -------------- | -------- | ------------------------------------------------------------ |
-| host           | string   | 客户端IP                                                     |
-| include_global | boolean  | 是否包含全局解析。<br />如果不存在则表示“包含”，因为这是默认值。 |
-
-### 事件表 - his_event
-
-当所有需要全局共享且缓存的数据发生变更时，都会往事件表写入相关记录，其他实例发现后会根据日志进行数据同步.
-
-| 列名        | 数据类型 | 注释                                                         |
-| ----------- | -------- | ------------------------------------------------------------ |
-| id          | long     | 自增Id                                                       |
-| create_time | datetime | 创建时间。事件发生时间                                       |
-| value       | string   | 事件值。可能包含类型或具体的一些值，<br />以表示发生了什么事情。 |
-| version     | long     | 事件版本                                                     |
-
 ### 解析记录表 - domain
 
 | 列名        | 数据类型 | 注释                                                       |
@@ -79,20 +61,25 @@ pri-dns {
 | name        | string   | 主机记录                                                   |
 | value       | string   | 记录值                                                     |
 | ttl         | int      | TTL                                                        |
+| dns_type    | string   | 记录类型。<br />A \| AAAA                                  |
+| type        | string   | Allow-正常解析 Deny-否定全局解析                           |
 | status      | string   | 状态。<br />ENABLE-启用                                    |
-| type        | string   | 记录类型。<br />A / NO_ALL / NO_Aty                        |
-| priority    | int      | 优先级。值越小优先级越高。                                 |
 | create_time | datetime | 创建时间。                                                 |
 | update_time | datetime | 修改时间。                                                 |
 
 ### 转发规则表 - forward
 
-| 列名 | 数据类型 | 注释   |
-| ---- | -------- | ------ |
-| id   | long     | 自增Id |
-|      |          |        |
-|      |          |        |
-|      |          |        |
+| 列名        | 数据类型 | 注释                                                       |
+| ----------- | -------- | ---------------------------------------------------------- |
+| id          | long     | 自增Id                                                     |
+| host        | string   | 客户端地址（生效范围）。<br />如果全局生效，则该字段为空。 |
+| name        | string   | 主机记录                                                   |
+| dns_svr     | string   | 转发目标DNS服务器，可以是多个，多个以逗号分割              |
+| history     | string   | 解析记录，用于导出使用，多个以逗号分割                     |
+| type        | string   | Allow-正常转发 Deny-否定全局解析                           |
+| status      | string   | 状态。<br />ENABLE-启用                                    |
+| create_time | datetime | 创建时间。                                                 |
+| update_time | datetime | 修改时间。                                                 |
 
 ## LICENSE
 

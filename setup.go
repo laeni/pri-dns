@@ -13,28 +13,27 @@ import (
 func init() { plugin.Register("pri-dns", setup) }
 
 func setup(c *caddy.Controller) error {
-	config, err := parse(c)
+	config, err := parsePriDns(c)
 	if err != nil {
 		return err
 	}
 
-	store, err := initDb(config)
+	store, err := initDb(c, config)
 	if err != nil {
 		return err
 	}
 
+	p := NewPriDns(config, store)
+	c.OnShutdown(p.closeFunc)
 	dnsserver.GetConfig(c).AddPlugin(func(next plugin.Handler) plugin.Handler {
-		return &PriDns{
-			Config: config,
-			Next:   next,
-			Store:  store,
-		}
+		p.Next = next
+		return p
 	})
 
 	return nil
 }
 
-func parse(c *caddy.Controller) (*Config, error) {
+func parsePriDns(c *caddy.Controller) (*Config, error) {
 	config := &Config{}
 
 	// 解析
@@ -117,15 +116,15 @@ func parse(c *caddy.Controller) (*Config, error) {
 	return config, nil
 }
 
-func initDb(config *Config) (db.Store, error) {
+func initDb(c *caddy.Controller, config *Config) (db.Store, error) {
 	switch config.storeType {
 	case storeTypeMySQL:
 		d, err := sql.Open("mysql", config.mySQL.dataSourceName)
 		if err != nil {
 			log.Fatal(err)
 		}
-		caddy.OnProcessExit = append(caddy.OnProcessExit, func() {
-			_ = d.Close()
+		c.OnShutdown(func() error {
+			return d.Close()
 		})
 		store := mysql.NewStore(d)
 		return &store, nil

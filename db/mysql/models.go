@@ -36,18 +36,20 @@ type Domain struct {
 // 转发配置.
 type Forward struct {
 	ID int64
+	// 客户端地址（生效范围）。<br />如果全局生效，则该字段为空。
+	Host string
+	// 需要转发解析的域名
+	Name string
+	// 转发目标DNS服务器，可以是多个，多个以逗号分割
+	DnsSvr string
+	// 解析记录，用于导出使用，多个以逗号分割
+	History sql.NullString
+	// Allow-正常转发 Deny-否定全局解析
+	Type sql.NullString
+	// 状态。<br />ENABLE-启用
+	Status string
 	// 创建时间
 	CreateTime types.LocalTime
 	// 修改时间
 	UpdateTime types.LocalTime
-	// 需要转发解析的域名
-	Name string
-	// 转发目标DNS服务器，可以是多个，多个以逗号分割
-	Dns string
-	// 生效范围。可选值：全局或某个具体Ip(如果为空则表示全局)
-	Bind sql.NullString
-	// 是否启用
-	Enabled string
-	// 该域名对应的解析历史。可能需要导出使用
-	History sql.NullString
 }

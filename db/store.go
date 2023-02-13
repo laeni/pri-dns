@@ -2,16 +2,20 @@ package db
 
 import (
 	"context"
-	"database/sql"
 	"github.com/laeni/pri-dns/types"
 )
 
 type Store interface {
-	// FindForwardByClient 查询客户端对应的转发配置，当 host 为 “” 时表示查询全局配置.
-	FindForwardByClient(host string) []Forward
+	// FindForwardByHostAndName 查询客户端对应的转发配置，当 host 为 “” 时表示查询全局配置.
+	FindForwardByHostAndName(ctx context.Context, host, name string) []Forward
 
 	// FindDomainByHostAndName 查询 qname 的解析记录。如果 host 不为空，则查询host下的解析，如果为空则只查询全局解析
 	FindDomainByHostAndName(ctx context.Context, host, qname string) []Domain
+}
+
+type RecordFilter interface {
+	NameVal() string
+	TypeVal() string
 }
 
 // Domain 解析记录表.
@@ -37,36 +41,37 @@ type Domain struct {
 	UpdateTime types.LocalTime
 }
 
-// DomainSortPriority 仅仅用于根据 Priority 进行排序使用
-type DomainSortPriority []Domain
-
-func (a DomainSortPriority) Len() int {
-	return len(a)
+func (d Domain) NameVal() string {
+	return d.Name
 }
-
-func (a DomainSortPriority) Swap(i, j int) {
-	a[i], a[j] = a[j], a[i]
-}
-
-func (a DomainSortPriority) Less(i, j int) bool {
-	return a[i].Priority < a[j].Priority
+func (d Domain) TypeVal() string {
+	return d.Type
 }
 
 // Forward 转发配置.
 type Forward struct {
 	ID int64
+	// 客户端地址（生效范围）。<br />如果全局生效，则该字段为空。
+	Host string
+	// 需要转发解析的域名
+	Name string
+	// 转发目标DNS服务器
+	DnsSvr []string
+	// 解析记录，用于导出使用
+	History []string
+	// Allow-正常转发 Deny-否定全局解析
+	Type string
+	// 状态。<br />ENABLE-启用
+	Status string
 	// 创建时间
 	CreateTime types.LocalTime
 	// 修改时间
 	UpdateTime types.LocalTime
-	// 需要转发解析的域名
-	Name string
-	// 转发目标DNS服务器，可以是多个，多个以逗号分割
-	Dns string
-	// 生效范围。可选值：全局或某个具体Ip(如果为空则表示全局)
-	Bind sql.NullString
-	// 是否启用
-	Enabled string
-	// 该域名对应的解析历史。可能需要导出使用
-	History sql.NullString
+}
+
+func (f Forward) NameVal() string {
+	return f.Name
+}
+func (f Forward) TypeVal() string {
+	return f.Type
 }

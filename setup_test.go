@@ -130,7 +130,7 @@ func TestParse(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := caddy.NewTestController("dns", tt.inputFileRules)
-			got, err := parse(c)
+			got, err := parsePriDns(c)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("parse() error = %v, wantErr %v", err, tt.wantErr)
 				return
