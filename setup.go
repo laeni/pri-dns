@@ -1,13 +1,20 @@
 package pridns
 
 import (
+	"crypto/tls"
 	"database/sql"
+	"fmt"
 	"github.com/coredns/caddy"
 	"github.com/coredns/coredns/core/dnsserver"
 	"github.com/coredns/coredns/plugin"
+	pkgtls "github.com/coredns/coredns/plugin/pkg/tls"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/laeni/pri-dns/db"
 	"github.com/laeni/pri-dns/db/mysql"
+	"github.com/laeni/pri-dns/forward"
+	"github.com/laeni/pri-dns/types"
+	"github.com/miekg/dns"
+	"time"
 )
 
 func init() { plugin.Register("pri-dns", setup) }
@@ -33,8 +40,8 @@ func setup(c *caddy.Controller) error {
 	return nil
 }
 
-func parsePriDns(c *caddy.Controller) (*Config, error) {
-	config := &Config{}
+func parsePriDns(c *caddy.Controller) (*types.Config, error) {
+	config := &types.Config{Tls: make(map[string]*tls.Config), HealthCheck: types.HealthCheckConfig{HcInterval: 5000 * time.Millisecond, HcDomain: "."}}
 
 	// 解析
 	for i := 1; c.Next(); i++ {
@@ -59,12 +66,12 @@ func parsePriDns(c *caddy.Controller) (*Config, error) {
 					if len(adminPasswordArgs) != 1 {
 						return nil, c.Err("'adminPassword' 配置错误，它有且仅有一个参数")
 					}
-					config.adminPassword = adminPasswordArgs[0]
+					config.AdminPassword = adminPasswordArgs[0]
 				case "mysql":
-					if config.storeType != "" {
+					if config.StoreType != "" {
 						return nil, c.Err("配置重复定义: mysql")
 					}
-					config.storeType = storeTypeMySQL
+					config.StoreType = storeTypeMySQL
 
 					for c.NextBlock() {
 						switch c.Val() {
@@ -73,16 +80,16 @@ func parsePriDns(c *caddy.Controller) (*Config, error) {
 							if len(dataSourceNameArgs) != 1 {
 								return nil, c.Errf("dataSourceName 配置错误")
 							}
-							config.mySQL.dataSourceName = dataSourceNameArgs[0]
+							config.MySQL.DataSourceName = dataSourceNameArgs[0]
 						default:
 							return nil, c.Errf("不支持的配置: %s", c.Val())
 						}
 					}
 				case "etcd":
-					if config.storeType != "" {
+					if config.StoreType != "" {
 						return nil, c.Err("配置重复定义: etcd")
 					}
-					config.storeType = storeTypeEtcd
+					config.StoreType = storeTypeEtcd
 
 					for c.NextBlock() {
 						switch c.Val() {
@@ -90,16 +97,111 @@ func parsePriDns(c *caddy.Controller) (*Config, error) {
 							return nil, c.Errf("不支持的配置: %s", c.Val())
 						}
 					}
-				case "redis":
-					if config.storeType != "" {
-						return nil, c.Err("配置重复定义: redis")
+				case "file":
+					if config.StoreType != "" {
+						return nil, c.Err("配置重复定义: file")
 					}
-					config.storeType = storeTypeRedis
+					config.StoreType = storeTypeRedis
 
 					for c.NextBlock() {
 						switch c.Val() {
 						default:
 							return nil, c.Errf("不支持的配置: %s", c.Val())
+						}
+					}
+				case "tls":
+					// tls 后面不能有其他配置
+					if len(c.RemainingArgs()) > 0 {
+						return nil, c.ArgErr()
+					}
+
+					var servername string
+					var hosts []string
+					var tlsConfig *tls.Config
+					for c.NextBlock() {
+						switch c.Val() {
+						case "cert":
+							if tlsConfig != nil {
+								return nil, c.Err("配置重复定义: cert")
+							}
+							// 解析证书
+							args := c.RemainingArgs()
+							if len(args) > 3 {
+								return nil, c.ArgErr()
+							}
+							tlsConfigTmp, err := pkgtls.NewTLSConfigFromArgs(args...)
+							if err != nil {
+								return nil, err
+							}
+							tlsConfig = tlsConfigTmp
+						case "servername":
+							if servername != "" {
+								return nil, c.Err("配置重复定义: servername")
+							}
+							if !c.NextArg() {
+								return nil, c.ArgErr()
+							}
+							servername = c.Val()
+						case "hosts":
+							if hosts != nil {
+								return nil, c.Err("配置重复定义: hosts")
+							}
+							hosts = c.RemainingArgs()
+							if len(hosts) == 0 {
+								return nil, c.ArgErr()
+							}
+						default:
+							return nil, c.Errf("unknown policy '%s'", c.Val())
+						}
+					}
+					if len(hosts) == 0 {
+						return nil, c.Err("tls 配置缺失")
+					}
+					if tlsConfig == nil {
+						tlsConfig = new(tls.Config)
+					}
+					if servername != "" {
+						tlsConfig.ServerName = servername
+					}
+					tlsConfig.ClientSessionCache = forward.ClientSessionCache
+
+					for _, host := range hosts {
+						if it, ok := config.Tls[host]; ok {
+							if it != nil {
+								return nil, c.Errf("配置冲突! host: %s", host)
+							}
+						}
+						config.Tls[host] = tlsConfig
+					}
+				case "health_check":
+					if !c.NextArg() {
+						return nil, c.ArgErr()
+					}
+					dur, err := time.ParseDuration(c.Val())
+					if err != nil {
+						return nil, err
+					}
+					if dur < 0 {
+						return nil, fmt.Errorf("health_check can't be negative: %d", dur)
+					}
+					config.HealthCheck.HcInterval = dur
+					config.HealthCheck.HcDomain = "."
+
+					for c.NextArg() {
+						switch hcOpts := c.Val(); hcOpts {
+						case "no_rec":
+							config.HealthCheck.HcRecursionDesired = false
+						case "domain":
+							if !c.NextArg() {
+								return nil, c.ArgErr()
+							}
+							hcDomain := c.Val()
+							if _, ok := dns.IsDomainName(hcDomain); !ok {
+								return nil, fmt.Errorf("health_check: invalid domain name %s", hcDomain)
+							}
+							config.HealthCheck.HcDomain = plugin.Name(hcDomain).Normalize()
+						default:
+							return nil, fmt.Errorf("health_check: unknown option %s", hcOpts)
 						}
 					}
 				default:
@@ -109,17 +211,17 @@ func parsePriDns(c *caddy.Controller) (*Config, error) {
 		}
 	}
 
-	if config.storeType == "" {
+	if config.StoreType == "" {
 		return nil, c.Errf("必须至少使用其中一种存储")
 	}
 
 	return config, nil
 }
 
-func initDb(c *caddy.Controller, config *Config) (db.Store, error) {
-	switch config.storeType {
+func initDb(c *caddy.Controller, config *types.Config) (db.Store, error) {
+	switch config.StoreType {
 	case storeTypeMySQL:
-		d, err := sql.Open("mysql", config.mySQL.dataSourceName)
+		d, err := sql.Open("mysql", config.MySQL.DataSourceName)
 		if err != nil {
 			log.Fatal(err)
 		}

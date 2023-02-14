@@ -10,6 +10,7 @@ import (
 	"errors"
 	"github.com/coredns/coredns/plugin/pkg/parse"
 	"github.com/laeni/pri-dns/db"
+	"github.com/laeni/pri-dns/types"
 	"github.com/laeni/pri-dns/util"
 	"sort"
 	"strings"
@@ -24,6 +25,9 @@ import (
 
 var log = clog.NewWithPlugin("pri-dns")
 
+// ClientSessionCache 默认情况下，ClientSessionCache 为 nil，即不会从历史会话中恢复，所以如果有 ClientSessionCache，则二次连接同一 TLS 服务器时握手可能会加快。
+var ClientSessionCache = tls.NewLRUClientSessionCache(0)
+
 var (
 	// max_fails 是考虑之前需要的后续失败运行状况检查的数量 上游要下降。如果为 0，则上游永远不会标记为关闭（也不进行健康检查）。 默认值为 2。
 	maxFails uint32 = 2
@@ -34,12 +38,6 @@ var (
 	hcInterval    = 500 * time.Millisecond
 	maxDnsSvr     = 4  // 单条记录转发上游的最大数量。
 	maxProxyCache = 20 // 最大代理实例缓存数量
-
-	// 访问远程 TLS 上游的配置
-	tlsConfig = &tls.Config{
-		// 默认情况下，ClientSessionCache 为 nil，即不会从历史会话中恢复，所以如果有 ClientSessionCache，则二次连接同一 TLS 服务器时握手可能会加快。
-		ClientSessionCache: tls.NewLRUClientSessionCache(0),
-	}
 
 	// ErrNoHealthy means no healthy proxies left.
 	ErrNoHealthy = errors.New("no healthy proxies")
@@ -163,58 +161,66 @@ var proxyCache = make(proxyCacheType, 0, maxProxyCache)
 //#endregion
 
 // GetProxy 根据 forwards 数据从缓存查询对应的 Proxy 实例，如果缓存不存在则创建新实例加入缓存
-func GetProxy(forwards []db.Forward, RegisterCloseHook func(func()) func()) ([]*Proxy, error) {
+func GetProxy(config *types.Config, forwards []db.Forward, RegisterCloseHook func(func()) func()) ([]*Proxy, error) {
 	var proxies []*Proxy
 	var err error
-	for _, proxy := range forwards {
-		// 规范化DNS地址
-		toHosts, perErr := parse.HostPortOrFile(strings.Join(proxy.DnsSvr, " "))
-		if perErr != nil {
-			err = perErr
-			continue
-		}
-
-		for _, svr := range toHosts {
-			if len(proxies) >= maxDnsSvr {
-				return proxies, nil
+	for _, forward := range forwards {
+		for _, dnsSvr := range forward.DnsSvr {
+			// 规范化DNS地址
+			toHosts, perErr := parse.HostPortOrFile(dnsSvr)
+			if perErr != nil {
+				err = perErr
+				continue
 			}
 
-			wrapper := proxyCache.get(svr)
-			// 如果不存在则创建新的代理实例放入缓存
-			if wrapper == nil {
-				p := newProxy(svr)
-				wrapper = &proxyCacheWrapper{
-					dnsSvr:       svr,
-					activityTime: time.Now(),
-					proxy:        p,
-					closeHook:    RegisterCloseHook(p.stop),
+			for _, svr := range toHosts {
+				if len(proxies) >= maxDnsSvr {
+					return proxies, nil
 				}
-				// 如果缓存已经超过最大限制，则删除不活跃的
-				if len(proxyCache) > maxProxyCache {
-					sort.Sort(proxyCache)
-					proxyCacheTmp, removed := proxyCache[:len(proxyCache)-5], proxyCache[len(proxyCache)-5:]
-					proxyCache = proxyCacheTmp
-					// 移除的代理需要关闭健康检查
-					for _, it := range removed {
-						it.proxy.stop()
-						// 已经关闭的Proxy要取消注册
-						it.closeHook()
+
+				wrapper := proxyCache.get(svr)
+				// 如果不存在则创建新的代理实例放入缓存
+				if wrapper == nil {
+					p := newProxy(svr, config.Tls)
+					wrapper = &proxyCacheWrapper{
+						dnsSvr:       svr,
+						activityTime: time.Now(),
+						proxy:        p,
+						closeHook:    RegisterCloseHook(p.stop),
 					}
+					// 如果缓存已经超过最大限制，则删除不活跃的
+					if len(proxyCache) > maxProxyCache {
+						sort.Sort(proxyCache)
+						proxyCacheTmp, removed := proxyCache[:len(proxyCache)-5], proxyCache[len(proxyCache)-5:]
+						proxyCache = proxyCacheTmp
+						// 移除的代理需要关闭健康检查
+						for _, it := range removed {
+							it.proxy.stop()
+							// 已经关闭的Proxy要取消注册
+							it.closeHook()
+						}
+					}
+					proxyCache = append(proxyCache, wrapper)
+				} else {
+					wrapper.activityTime = time.Now()
 				}
-				proxyCache = append(proxyCache, wrapper)
-			} else {
-				wrapper.activityTime = time.Now()
+				proxies = append(proxies, wrapper.proxy)
 			}
-			proxies = append(proxies, wrapper.proxy)
 		}
 	}
 	return proxies, err
 }
 
-func newProxy(dnsSvr string) *Proxy {
+func newProxy(dnsSvr string, tlsConfigMap map[string]*tls.Config) *Proxy {
 	trans, h := parse.Transport(dnsSvr)
 	p := NewProxy(h, trans)
 	if trans == "tls" {
+		tlsConfig, ok := tlsConfigMap[strings.Split(h, ":")[0]]
+		if !ok {
+			tlsConfig = &tls.Config{
+				ClientSessionCache: ClientSessionCache,
+			}
+		}
 		p.SetTLSConfig(tlsConfig)
 	}
 	// 在此时间后过期（缓存）连接

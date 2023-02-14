@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/laeni/pri-dns/db"
 	myForward "github.com/laeni/pri-dns/forward"
+	"github.com/laeni/pri-dns/types"
 	"github.com/laeni/pri-dns/util"
 	"github.com/miekg/dns"
 	"net"
@@ -21,20 +22,8 @@ const (
 
 var log = clog.NewWithPlugin("pri-dns")
 
-type MySQLConfig struct {
-	// DataSourceName 为MySQL数据库连接地址
-	dataSourceName string
-}
-
-// Config 表示插件配置
-type Config struct {
-	adminPassword string
-	storeType     string
-	mySQL         MySQLConfig
-}
-
 type PriDns struct {
-	Config *Config
+	Config *types.Config
 	Next   plugin.Handler
 	Store  db.Store
 	// 用于存储销毁钩子函数，这些函数将关闭插件时调用，比如配置刷新时需要关闭原有的插件实例，其中 key 为随机数
@@ -43,7 +32,7 @@ type PriDns struct {
 	closeFunc func() error
 }
 
-func NewPriDns(config *Config, store db.Store) *PriDns {
+func NewPriDns(config *types.Config, store db.Store) *PriDns {
 	closeHook := make(map[string]func())
 	return &PriDns{Config: config, Store: store, closeHook: closeHook, closeFunc: func() error {
 		for _, f := range closeHook {
@@ -205,7 +194,7 @@ func handForward(d PriDns, ctx context.Context, state request.Request) (ok bool,
 		ok = true
 
 		// 查询对应的 Proxy 实例
-		proxies, err2 := myForward.GetProxy(forwards, d.RegisterCloseHook)
+		proxies, err2 := myForward.GetProxy(d.Config, forwards, d.RegisterCloseHook)
 		if err2 != nil {
 			code = dns.RcodeServerFailure
 			err = err2
