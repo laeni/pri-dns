@@ -163,18 +163,20 @@ var proxyCache = make(proxyCacheType, 0, maxProxyCache)
 //#endregion
 
 // GetProxy 根据 forwards 数据从缓存查询对应的 Proxy 实例，如果缓存不存在则创建新实例加入缓存
-func GetProxy(forwards []db.Forward, RegisterCloseHook func(func()) func()) []*Proxy {
+func GetProxy(forwards []db.Forward, RegisterCloseHook func(func()) func()) ([]*Proxy, error) {
 	var proxies []*Proxy
+	var err error
 	for _, proxy := range forwards {
 		// 规范化DNS地址
-		toHosts, err := parse.HostPortOrFile(strings.Join(proxy.DnsSvr, " "))
-		if err != nil {
+		toHosts, perErr := parse.HostPortOrFile(strings.Join(proxy.DnsSvr, " "))
+		if perErr != nil {
+			err = perErr
 			continue
 		}
 
 		for _, svr := range toHosts {
 			if len(proxies) >= maxDnsSvr {
-				return proxies
+				return proxies, nil
 			}
 
 			wrapper := proxyCache.get(svr)
@@ -206,7 +208,7 @@ func GetProxy(forwards []db.Forward, RegisterCloseHook func(func()) func()) []*P
 			proxies = append(proxies, wrapper.proxy)
 		}
 	}
-	return proxies
+	return proxies, err
 }
 
 func newProxy(dnsSvr string) *Proxy {

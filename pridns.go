@@ -205,7 +205,12 @@ func handForward(d PriDns, ctx context.Context, state request.Request) (ok bool,
 		ok = true
 
 		// 查询对应的 Proxy 实例
-		proxies := myForward.GetProxy(forwards, d.RegisterCloseHook)
+		proxies, err2 := myForward.GetProxy(forwards, d.RegisterCloseHook)
+		if err2 != nil {
+			code = dns.RcodeServerFailure
+			err = err2
+			return
+		}
 
 		// 转发请求
 		code, err = myForward.Run(proxies, ctx, state)
