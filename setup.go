@@ -14,6 +14,7 @@ import (
 	"github.com/laeni/pri-dns/forward"
 	"github.com/laeni/pri-dns/types"
 	"github.com/miekg/dns"
+	"strconv"
 	"time"
 )
 
@@ -41,7 +42,11 @@ func setup(c *caddy.Controller) error {
 }
 
 func parsePriDns(c *caddy.Controller) (*types.Config, error) {
-	config := &types.Config{Tls: make(map[string]*tls.Config), HealthCheck: types.HealthCheckConfig{HcInterval: 5000 * time.Millisecond, HcDomain: "."}}
+	config := &types.Config{
+		Tls:         make(map[string]*tls.Config),
+		HealthCheck: types.HealthCheckConfig{HcInterval: 5000 * time.Millisecond, HcDomain: "."},
+		MySQL:       types.MySQLConfig{ConnMaxLifetime: 10 * time.Minute},
+	}
 
 	// 解析
 	for i := 1; c.Next(); i++ {
@@ -81,6 +86,39 @@ func parsePriDns(c *caddy.Controller) (*types.Config, error) {
 								return nil, c.Errf("dataSourceName 配置错误")
 							}
 							config.MySQL.DataSourceName = dataSourceNameArgs[0]
+						case "maxIdleConns":
+							args := c.RemainingArgs()
+							if len(args) != 1 {
+								return nil, fmt.Errorf("maxIdleConns 参数个数有误")
+							}
+							maxIdleConns, err := strconv.Atoi(args[0])
+							if err != nil {
+								return nil, err
+							}
+							config.MySQL.MaxIdleConns = maxIdleConns
+						case "maxOpenConns":
+							args := c.RemainingArgs()
+							if len(args) != 1 {
+								return nil, fmt.Errorf("maxOpenConns 参数个数有误")
+							}
+							maxOpenConns, err := strconv.Atoi(args[0])
+							if err != nil {
+								return nil, err
+							}
+							config.MySQL.MaxOpenConns = maxOpenConns
+						case "connMaxLifetime":
+							args := c.RemainingArgs()
+							if len(args) != 1 {
+								return nil, fmt.Errorf("connMaxLifetime 参数个数有误")
+							}
+							dur, err := time.ParseDuration(args[0])
+							if err != nil {
+								return nil, err
+							}
+							if dur < 0 {
+								return nil, fmt.Errorf("connMaxLifetime can't be negative: %d", dur)
+							}
+							config.MySQL.ConnMaxLifetime = dur
 						default:
 							return nil, c.Errf("不支持的配置: %s", c.Val())
 						}
@@ -228,6 +266,12 @@ func initDb(c *caddy.Controller, config *types.Config) (db.Store, error) {
 		c.OnShutdown(func() error {
 			return d.Close()
 		})
+		// SetMaxIdleConns 设置空闲连接池中连接的最大数量（默认：2）
+		d.SetMaxIdleConns(config.MySQL.MaxIdleConns)
+		// SetMaxOpenConns 设置打开数据库连接的最大数量(默认：0,无限制)
+		d.SetMaxOpenConns(config.MySQL.MaxOpenConns)
+		// SetConnMaxLifetime 设置了连接可复用的最大时间。
+		d.SetConnMaxLifetime(config.MySQL.ConnMaxLifetime)
 		store := mysql.NewStore(d)
 		return &store, nil
 	}

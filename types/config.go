@@ -15,8 +15,10 @@ type Config struct {
 }
 
 type MySQLConfig struct {
-	// DataSourceName 为MySQL数据库连接地址
-	DataSourceName string
+	DataSourceName  string        // MySQL数据库连接地址
+	MaxIdleConns    int           // 空闲连接池中连接的最大数量（默认：2）
+	MaxOpenConns    int           // 打开数据库连接的最大数量(默认：0,无限制)
+	ConnMaxLifetime time.Duration // 连接可复用的最大时间
 }
 
 // HealthCheckConfig 为健康检查配置，配置时格式与 forward 插件配置相同
