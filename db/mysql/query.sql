@@ -43,50 +43,50 @@ where host = ?
 -- FindDomainGlobalByName1 查询指定域名的全局解析
 -- name: FindDomainGlobalByName1 :many
 select *
-from `domain`
-where `name` = ?
-    and `host` = ''
-   or `host` is null;
+from domain
+where name = ?
+    and host = ''
+   or host is null;
 
 -- FindDomainGlobalByName2 查询指定域名的全局解析
 -- name: FindDomainGlobalByName2 :many
 select *
-from `domain`
-where (`name` = ? or `name` = ?)
-    and `host` = ''
-   or `host` is null;
+from domain
+where (name = ? or name = ?)
+    and host = ''
+   or host is null;
 
 -- FindDomainGlobalByName3 查询指定域名的全局解析
 -- name: FindDomainGlobalByName3 :many
 select *
-from `domain`
-where (`name` = ? or `name` = ? or `name` = ?)
-    and `host` = ''
-   or `host` is null;
+from domain
+where (name = ? or name = ? or name = ?)
+    and host = ''
+   or host is null;
 
 -- FindDomainGlobalByName4 查询指定域名的全局解析
 -- name: FindDomainGlobalByName4 :many
 select *
-from `domain`
-where (`name` = ? or `name` = ? or `name` = ? or `name` = ?)
-    and `host` = ''
-   or `host` is null;
+from domain
+where (name = ? or name = ? or name = ? or name = ?)
+    and host = ''
+   or host is null;
 
 -- FindDomainGlobalByName5 查询指定域名的全局解析
 -- name: FindDomainGlobalByName5 :many
 select *
-from `domain`
-where (`name` = ? or `name` = ? or `name` = ? or `name` = ? or `name` = ?)
-    and `host` = ''
-   or `host` is null;
+from domain
+where (name = ? or name = ? or name = ? or name = ? or name = ?)
+    and host = ''
+   or host is null;
 
 -- FindDomainGlobalByName6 查询指定域名的全局解析
 -- name: FindDomainGlobalByName6 :many
 select *
-from `domain`
-where (`name` = ? or `name` = ? or `name` = ? or `name` = ? or `name` = ? or `name` = ?)
-    and `host` = ''
-   or `host` is null;
+from domain
+where (name = ? or name = ? or name = ? or name = ? or name = ? or name = ?)
+    and host = ''
+   or host is null;
 
 -- FindForwardByHostAndNameLike1 查询客户端专属的转发
 -- name: FindForwardByHostAndNameLike1 :many
@@ -133,47 +133,47 @@ where host = ?
 -- FindForwardGlobalByName1 查询指定域名的全局转发
 -- name: FindForwardGlobalByName1 :many
 select *
-from `forward`
-where `name` = ?
-    and `host` = ''
-   or `host` is null;
+from forward
+where name = ?
+    and host = ''
+   or host is null;
 
 -- FindForwardGlobalByName2 查询指定域名的全局转发
 -- name: FindForwardGlobalByName2 :many
 select *
-from `forward`
-where (`name` = ? or `name` = ?)
-    and `host` = ''
-   or `host` is null;
+from forward
+where (name = ? or name = ?)
+    and host = ''
+   or host is null;
 
 -- FindForwardGlobalByName3 查询指定域名的全局转发
 -- name: FindForwardGlobalByName3 :many
 select *
-from `forward`
-where (`name` = ? or `name` = ? or `name` = ?)
-    and `host` = ''
-   or `host` is null;
+from forward
+where (name = ? or name = ? or name = ?)
+    and host = ''
+   or host is null;
 
 -- FindForwardGlobalByName4 查询指定域名的全局转发
 -- name: FindForwardGlobalByName4 :many
 select *
-from `forward`
-where (`name` = ? or `name` = ? or `name` = ? or `name` = ?)
-    and `host` = ''
-   or `host` is null;
+from forward
+where (name = ? or name = ? or name = ? or name = ?)
+    and host = ''
+   or host is null;
 
 -- FindForwardGlobalByName5 查询指定域名的全局转发
 -- name: FindForwardGlobalByName5 :many
 select *
-from `forward`
-where (`name` = ? or `name` = ? or `name` = ? or `name` = ? or `name` = ?)
-    and `host` = ''
-   or `host` is null;
+from forward
+where (name = ? or name = ? or name = ? or name = ? or name = ?)
+    and host = ''
+   or host is null;
 
 -- FindForwardGlobalByName6 查询指定域名的全局转发
 -- name: FindForwardGlobalByName6 :many
 select *
-from `forward`
-where (`name` = ? or `name` = ? or `name` = ? or `name` = ? or `name` = ? or `name` = ?)
-    and `host` = ''
-   or `host` is null;
+from forward
+where (name = ? or name = ? or name = ? or name = ? or name = ? or name = ?)
+    and host = ''
+   or host is null;

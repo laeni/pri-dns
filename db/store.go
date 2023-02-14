@@ -15,7 +15,7 @@ type Store interface {
 
 type RecordFilter interface {
 	NameVal() string
-	TypeVal() string
+	DenyGlobalVal() bool
 }
 
 // Domain 解析记录表.
@@ -29,12 +29,12 @@ type Domain struct {
 	Value string
 	// TTL
 	Ttl int32
+	// 记录类型。<br />A | AAAA
+	DnsType string
+	// 是否拒绝全局解析
+	DenyGlobal bool
 	// 状态。<br />ENABLE-启用
 	Status string
-	// 记录类型。带"NO_"前缀的表示用于禁用全局解析。<br />A / NO_ALL / NO_A
-	Type string
-	// 优先级。值越小优先级越高。
-	Priority int32
 	// 创建时间
 	CreateTime types.LocalTime
 	// 修改时间
@@ -44,8 +44,8 @@ type Domain struct {
 func (d Domain) NameVal() string {
 	return d.Name
 }
-func (d Domain) TypeVal() string {
-	return d.Type
+func (d Domain) DenyGlobalVal() bool {
+	return d.DenyGlobal
 }
 
 // Forward 转发配置.
@@ -59,8 +59,8 @@ type Forward struct {
 	DnsSvr []string
 	// 解析记录，用于导出使用
 	History []string
-	// Allow-正常转发 Deny-否定全局解析
-	Type string
+	// 是否拒绝全局解析
+	DenyGlobal bool
 	// 状态。<br />ENABLE-启用
 	Status string
 	// 创建时间
@@ -72,6 +72,6 @@ type Forward struct {
 func (f Forward) NameVal() string {
 	return f.Name
 }
-func (f Forward) TypeVal() string {
-	return f.Type
+func (f Forward) DenyGlobalVal() bool {
+	return f.DenyGlobal
 }

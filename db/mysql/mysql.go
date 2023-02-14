@@ -41,8 +41,8 @@ func (s *StoreMysql) FindForwardByHostAndName(ctx context.Context, host, name st
 		}
 
 		var snsSvr []string
-		if temp.DnsSvr != "" {
-			snsSvr = strings.Split(temp.DnsSvr, ",")
+		if temp.DnsSvr.String != "" {
+			snsSvr = strings.Split(temp.DnsSvr.String, ",")
 		}
 
 		forwards[i] = db.Forward{
@@ -51,7 +51,7 @@ func (s *StoreMysql) FindForwardByHostAndName(ctx context.Context, host, name st
 			Name:       temp.Name,
 			DnsSvr:     snsSvr,
 			History:    history,
-			Type:       temp.Type.String,
+			DenyGlobal: strings.ToUpper(temp.DenyGlobal) == "Y",
 			Status:     temp.Status,
 			CreateTime: temp.CreateTime,
 			UpdateTime: temp.UpdateTime,
@@ -83,9 +83,9 @@ func (s *StoreMysql) FindDomainByHostAndName(ctx context.Context, host, name str
 			Name:       temp.Name,
 			Value:      temp.Value.String,
 			Ttl:        temp.Ttl.Int32,
+			DnsType:    temp.DnsType.String,
+			DenyGlobal: strings.ToUpper(temp.DenyGlobal) == "Y",
 			Status:     temp.Status,
-			Type:       temp.Type.String,
-			Priority:   temp.Priority,
 			CreateTime: temp.CreateTime,
 			UpdateTime: temp.UpdateTime,
 		}

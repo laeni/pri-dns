@@ -21,12 +21,12 @@ type Domain struct {
 	Value sql.NullString
 	// TTL
 	Ttl sql.NullInt32
+	// 记录类型。<br />A | AAAA
+	DnsType sql.NullString
+	// 是否拒绝全局解析
+	DenyGlobal string
 	// 状态。<br />ENABLE-启用
 	Status string
-	// 记录类型。带"NO_"前缀的表示用于禁用全局解析。<br />A / NO_ALL / NO_A
-	Type sql.NullString
-	// 优先级。值越小优先级越高。
-	Priority int32
 	// 创建时间
 	CreateTime types.LocalTime
 	// 修改时间
@@ -41,11 +41,11 @@ type Forward struct {
 	// 需要转发解析的域名
 	Name string
 	// 转发目标DNS服务器，可以是多个，多个以逗号分割
-	DnsSvr string
+	DnsSvr sql.NullString
 	// 解析记录，用于导出使用，多个以逗号分割
 	History sql.NullString
-	// Allow-正常转发 Deny-否定全局解析
-	Type sql.NullString
+	// 是否拒绝全局解析
+	DenyGlobal string
 	// 状态。<br />ENABLE-启用
 	Status string
 	// 创建时间

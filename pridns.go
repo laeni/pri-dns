@@ -7,20 +7,16 @@ import (
 	"github.com/coredns/coredns/request"
 	"github.com/google/uuid"
 	"github.com/laeni/pri-dns/db"
+	myForward "github.com/laeni/pri-dns/forward"
 	"github.com/laeni/pri-dns/util"
 	"github.com/miekg/dns"
 	"net"
-	"strings"
-
-	myForward "github.com/laeni/pri-dns/forward"
 )
 
 const (
 	storeTypeMySQL = "mysql" // 表示使用 mysql 作为存储介质
 	storeTypeEtcd  = "etcd"  // 表示使用 etcd 作为存储介质
 	storeTypeRedis = "redis" // 表示使用 redis 作为存储介质
-
-	dnsTypeDENY = "DENY" // 自定义类型，表示用于拒绝全局解析
 )
 
 var log = clog.NewWithPlugin("pri-dns")
@@ -119,12 +115,12 @@ func filterRecord[T db.RecordFilter](qname string, records []T) ([]T, bool) {
 	for _, name := range names {
 		t = t[:0]
 		for _, record := range records {
-			if strings.ToUpper(record.TypeVal()) != dnsTypeDENY {
+			if record.DenyGlobalVal() {
+				deny = true
+			} else {
 				if record.NameVal() == name {
 					t = append(t, record)
 				}
-			} else {
-				deny = true
 			}
 		}
 		if len(t) != 0 {
@@ -164,7 +160,7 @@ func handQuery(d PriDns, ctx context.Context, state request.Request) []dns.RR {
 
 		answers := make([]dns.RR, 0, len(domains))
 		for _, domain := range domains {
-			switch domain.Type {
+			switch domain.DnsType {
 			case "A":
 				r := new(dns.A)
 				r.Hdr = dns.RR_Header{Name: qname + ".", Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: uint32(domain.Ttl)}
@@ -176,7 +172,7 @@ func handQuery(d PriDns, ctx context.Context, state request.Request) []dns.RR {
 				r.AAAA = net.ParseIP(domain.Value)
 				answers = append(answers, r)
 			default:
-				log.Warningf("不支持%s类型!\n", domain.Type)
+				log.Warningf("不支持%s类型!\n", domain.DnsType)
 			}
 		}
 
