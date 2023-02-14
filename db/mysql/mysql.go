@@ -3,18 +3,18 @@ package mysql
 import (
 	"context"
 	"database/sql"
-	"github.com/coredns/coredns/plugin/pkg/log"
 	"github.com/laeni/pri-dns/db"
 	"github.com/laeni/pri-dns/util"
 	"strings"
 )
 
 type StoreMysql struct {
+	db      *sql.DB
 	queries *Queries
 }
 
 func NewStore(db *sql.DB) StoreMysql {
-	return StoreMysql{queries: New(db)}
+	return StoreMysql{db: db, queries: New(db)}
 }
 
 func (s *StoreMysql) FindForwardByHostAndName(ctx context.Context, host, name string) []db.Forward {
@@ -22,13 +22,21 @@ func (s *StoreMysql) FindForwardByHostAndName(ctx context.Context, host, name st
 
 	var forwardTemps []Forward
 	var err error
+	tx, err := s.db.Begin()
+	defer tx.Rollback()
+	if err != nil {
+		panic(err)
+	}
 	if host != "" {
-		forwardTemps, err = s.queries.FindForwardByHostAndNameLike(ctx, host, names)
+		forwardTemps, err = s.queries.WithTx(tx).FindForwardByHostAndNameLike(ctx, host, names)
 	} else {
-		forwardTemps, err = s.queries.FindForwardGlobalByName(ctx, names)
+		forwardTemps, err = s.queries.WithTx(tx).FindForwardGlobalByName(ctx, names)
 	}
 	if err != nil {
-		log.Error("从数据库查询转发记录失败", err)
+		panic(err)
+	}
+	if err = tx.Commit(); err != nil {
+		panic(err)
 	}
 
 	forwards := make([]db.Forward, len(forwardTemps))
@@ -65,13 +73,21 @@ func (s *StoreMysql) FindDomainByHostAndName(ctx context.Context, host, name str
 
 	var domainTemps []Domain
 	var err error
+	tx, err := s.db.Begin()
+	defer tx.Rollback()
+	if err != nil {
+		panic(err)
+	}
 	if host != "" {
-		domainTemps, err = s.queries.FindDomainByHostAndNameLike(ctx, host, names)
+		domainTemps, err = s.queries.WithTx(tx).FindDomainByHostAndNameLike(ctx, host, names)
 	} else {
-		domainTemps, err = s.queries.FindDomainGlobalByName(ctx, names)
+		domainTemps, err = s.queries.WithTx(tx).FindDomainGlobalByName(ctx, names)
 	}
 	if err != nil {
-		log.Error("从数据库查询解析记录失败", err)
+		panic(err)
+	}
+	if err = tx.Commit(); err != nil {
+		panic(err)
 	}
 
 	domains := make([]db.Domain, len(domainTemps))
