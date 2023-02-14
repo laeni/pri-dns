@@ -62,7 +62,7 @@ pri-dns {
 | value       | string   | 记录值                                                     |
 | ttl         | int      | TTL                                                        |
 | dns_type    | string   | 记录类型。<br />A \| AAAA                                  |
-| type        | string   | Allow-正常解析 Deny-否定全局解析                           |
+| deny_global | string   | 是否拒绝全局解析. Y-拒绝 N-正常                            |
 | status      | string   | 状态。<br />ENABLE-启用                                    |
 | create_time | datetime | 创建时间。                                                 |
 | update_time | datetime | 修改时间。                                                 |
@@ -76,7 +76,7 @@ pri-dns {
 | name        | string   | 主机记录                                                   |
 | dns_svr     | string   | 转发目标DNS服务器，可以是多个，多个以逗号分割              |
 | history     | string   | 解析记录，用于导出使用，多个以逗号分割                     |
-| type        | string   | Allow-正常转发 Deny-否定全局解析                           |
+| deny_global | string   | 是否拒绝全局转发. Y-拒绝 N-正常                            |
 | status      | string   | 状态。<br />ENABLE-启用                                    |
 | create_time | datetime | 创建时间。                                                 |
 | update_time | datetime | 修改时间。                                                 |

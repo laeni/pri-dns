@@ -3,11 +3,12 @@ module github.com/laeni/pri-dns
 go 1.19
 
 require (
-	github.com/allegro/bigcache/v3 v3.1.0
 	github.com/coredns/caddy v1.1.1
 	github.com/coredns/coredns v1.10.0
 	github.com/go-sql-driver/mysql v1.7.0
+	github.com/google/uuid v1.3.0
 	github.com/miekg/dns v1.1.50
+	github.com/prometheus/client_golang v1.13.0
 )
 
 require (
@@ -19,7 +20,6 @@ require (
 	github.com/grpc-ecosystem/grpc-opentracing v0.0.0-20180507213350-8e809c8a8645 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.1 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
-	github.com/prometheus/client_golang v1.13.0 // indirect
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.37.0 // indirect
 	github.com/prometheus/procfs v0.8.0 // indirect

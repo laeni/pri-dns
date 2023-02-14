@@ -33,11 +33,12 @@ func ReverseDomain(str string) string {
 }
 
 // GenAllMatchDomain 生成能够与目标域名匹配的所有解析域名的翻转格式
-// 如 "a.b.example.com" -> ["com.example.b.a", "com.example.b.*", "com.example.*"]
+// 如 "a.b.example.com" -> ["com.example.b.a", "com.example.b.a.*", "com.example.b.*", "com.example.*"]
 func GenAllMatchDomain(name string) []string {
 	// 反转域名并得到各部分组成的切片
 	domainSlice := ReverseDomainAndToSlice(name)
-	names := []string{strings.Join(domainSlice, ".")}
+	fast := strings.Join(domainSlice, ".")
+	names := []string{fast, fast + ".*"}
 
 	if len(domainSlice) > 2 {
 		for i := len(domainSlice) - 2; i >= 1; i-- {

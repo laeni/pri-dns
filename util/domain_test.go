@@ -56,7 +56,7 @@ func Test_genAllMatchDomain(t *testing.T) {
 		{
 			name: "测试 'a.b.example.com'",
 			args: args{"a.b.example.com"},
-			want: []string{"com.example.b.a", "com.example.b.*", "com.example.*"},
+			want: []string{"com.example.b.a", "com.example.b.a.*", "com.example.b.*", "com.example.*"},
 		},
 	}
 	for _, tt := range tests {
