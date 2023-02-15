@@ -11,6 +11,9 @@ type Store interface {
 
 	// FindDomainByHostAndName 查询 qname 的解析记录。如果 host 不为空，则查询host下的解析，如果为空则只查询全局解析
 	FindDomainByHostAndName(ctx context.Context, host, qname string) []Domain
+
+	// SavaHistory 保存历史
+	SavaHistory(ctx context.Context, name string, newHis []string) error
 }
 
 type RecordFilter interface {
@@ -74,4 +77,13 @@ func (f Forward) NameVal() string {
 }
 func (f Forward) DenyGlobalVal() bool {
 	return f.DenyGlobal
+}
+
+// History 转发解析历史.
+type History struct {
+	ID int64
+	// 需要转发解析的域名
+	Name string
+	// 解析记录，用于导出使用
+	History []string
 }

@@ -49,7 +49,7 @@ var (
 
 // Run 使用代理实际进行转发.
 // 该代码几乎复制于 forward 插件
-func Run(proxies []*Proxy, ctx context.Context, state request.Request) (int, error) {
+func Run(proxies []*Proxy, ctx context.Context, state request.Request) (int, error, []string) {
 	fails := 0
 	var upstreamErr error
 	i := 0
@@ -110,18 +110,28 @@ func Run(proxies []*Proxy, ctx context.Context, state request.Request) (int, err
 			formerr := new(dns.Msg)
 			formerr.SetRcode(state.Req, dns.RcodeFormatError)
 			state.W.WriteMsg(formerr)
-			return dns.RcodeSuccess, nil
+			return dns.RcodeSuccess, nil, nil
 		}
 
 		_ = state.W.WriteMsg(ret)
-		return dns.RcodeSuccess, nil
+		return dns.RcodeSuccess, nil, getAddress(ret)
 	}
 
 	if upstreamErr != nil {
-		return dns.RcodeServerFailure, upstreamErr
+		return dns.RcodeServerFailure, upstreamErr, nil
 	}
 
-	return dns.RcodeServerFailure, ErrNoHealthy
+	return dns.RcodeServerFailure, ErrNoHealthy, nil
+}
+
+func getAddress(ret *dns.Msg) []string {
+	ads := make([]string, 0, len(ret.Answer)+len(ret.Ns)+len(ret.Extra))
+	for _, rr := range ret.Answer {
+		if v, ok := rr.(*dns.A); ok {
+			ads = append(ads, v.A.String())
+		}
+	}
+	return ads
 }
 
 //#region ProxyCache

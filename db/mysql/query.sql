@@ -45,48 +45,54 @@ where host = ?
 select *
 from domain
 where name = ?
-    and host = ''
-   or host is null;
+  and (host = ''
+    or host is null)
+  and status = 'ENABLE';
 
 -- FindDomainGlobalByName2 查询指定域名的全局解析
 -- name: FindDomainGlobalByName2 :many
 select *
 from domain
 where (name = ? or name = ?)
-    and host = ''
-   or host is null;
+  and (host = ''
+    or host is null)
+  and status = 'ENABLE';
 
 -- FindDomainGlobalByName3 查询指定域名的全局解析
 -- name: FindDomainGlobalByName3 :many
 select *
 from domain
 where (name = ? or name = ? or name = ?)
-    and host = ''
-   or host is null;
+  and (host = ''
+    or host is null)
+  and status = 'ENABLE';
 
 -- FindDomainGlobalByName4 查询指定域名的全局解析
 -- name: FindDomainGlobalByName4 :many
 select *
 from domain
 where (name = ? or name = ? or name = ? or name = ?)
-    and host = ''
-   or host is null;
+  and (host = ''
+    or host is null)
+  and status = 'ENABLE';
 
 -- FindDomainGlobalByName5 查询指定域名的全局解析
 -- name: FindDomainGlobalByName5 :many
 select *
 from domain
 where (name = ? or name = ? or name = ? or name = ? or name = ?)
-    and host = ''
-   or host is null;
+  and (host = ''
+    or host is null)
+  and status = 'ENABLE';
 
 -- FindDomainGlobalByName6 查询指定域名的全局解析
 -- name: FindDomainGlobalByName6 :many
 select *
 from domain
 where (name = ? or name = ? or name = ? or name = ? or name = ? or name = ?)
-    and host = ''
-   or host is null;
+  and (host = ''
+    or host is null)
+  and status = 'ENABLE';
 
 -- FindForwardByHostAndNameLike1 查询客户端专属的转发
 -- name: FindForwardByHostAndNameLike1 :many
@@ -135,45 +141,68 @@ where host = ?
 select *
 from forward
 where name = ?
-    and host = ''
-   or host is null;
+  and (host = ''
+    or host is null)
+  and status = 'ENABLE';
 
 -- FindForwardGlobalByName2 查询指定域名的全局转发
 -- name: FindForwardGlobalByName2 :many
 select *
 from forward
 where (name = ? or name = ?)
-    and host = ''
-   or host is null;
+  and (host = ''
+    or host is null)
+  and status = 'ENABLE';
 
 -- FindForwardGlobalByName3 查询指定域名的全局转发
 -- name: FindForwardGlobalByName3 :many
 select *
 from forward
 where (name = ? or name = ? or name = ?)
-    and host = ''
-   or host is null;
+  and (host = ''
+    or host is null)
+  and status = 'ENABLE';
 
 -- FindForwardGlobalByName4 查询指定域名的全局转发
 -- name: FindForwardGlobalByName4 :many
 select *
 from forward
 where (name = ? or name = ? or name = ? or name = ?)
-    and host = ''
-   or host is null;
+  and (host = ''
+    or host is null)
+  and status = 'ENABLE';
 
 -- FindForwardGlobalByName5 查询指定域名的全局转发
 -- name: FindForwardGlobalByName5 :many
 select *
 from forward
 where (name = ? or name = ? or name = ? or name = ? or name = ?)
-    and host = ''
-   or host is null;
+  and (host = ''
+    or host is null)
+  and status = 'ENABLE';
 
 -- FindForwardGlobalByName6 查询指定域名的全局转发
 -- name: FindForwardGlobalByName6 :many
 select *
 from forward
 where (name = ? or name = ? or name = ? or name = ? or name = ? or name = ?)
-    and host = ''
-   or host is null;
+  and (host = ''
+    or host is null)
+  and status = 'ENABLE';
+
+-- FindHistoryByName 查询历史
+-- name: FindHistoryByName :one
+select *
+from history
+where name = ?;
+
+-- InsertHistory 插入历史
+-- name: InsertHistory :exec
+insert into history(name, history)
+VALUES (?, ?);
+
+-- UpdateHistory 更新历史
+-- name: UpdateHistory :exec
+update history
+set history = ?
+where name = ?;

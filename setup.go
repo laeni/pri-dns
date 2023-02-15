@@ -32,6 +32,7 @@ func setup(c *caddy.Controller) error {
 	}
 
 	p := NewPriDns(config, store)
+	c.OnStartup(p.initFunc)
 	c.OnShutdown(p.closeFunc)
 	dnsserver.GetConfig(c).AddPlugin(func(next plugin.Handler) plugin.Handler {
 		p.Next = next

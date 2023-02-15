@@ -75,11 +75,20 @@ pri-dns {
 | host        | string   | 客户端地址（生效范围）。<br />如果全局生效，则该字段为空。 |
 | name        | string   | 主机记录                                                   |
 | dns_svr     | string   | 转发目标DNS服务器，可以是多个，多个以逗号分割              |
-| history     | string   | 解析记录，用于导出使用，多个以逗号分割                     |
 | deny_global | string   | 是否拒绝全局转发. Y-拒绝 N-正常                            |
 | status      | string   | 状态。<br />ENABLE-启用                                    |
 | create_time | datetime | 创建时间。                                                 |
 | update_time | datetime | 修改时间。                                                 |
+
+### 解析历史 - history
+
+| 列名        | 数据类型 | 注释                                   |
+| ----------- | -------- | -------------------------------------- |
+| id          | long     | 自增Id                                 |
+| name        | string   | 主机记录                               |
+| history     | string   | 解析记录，用于导出使用，多个以逗号分割 |
+| create_time | datetime | 创建时间。                             |
+| update_time | datetime | 修改时间。                             |
 
 ## LICENSE
 

@@ -2,6 +2,7 @@ package pridns
 
 import (
 	"context"
+	"fmt"
 	"github.com/coredns/coredns/plugin"
 	clog "github.com/coredns/coredns/plugin/pkg/log"
 	"github.com/coredns/coredns/request"
@@ -12,6 +13,8 @@ import (
 	"github.com/laeni/pri-dns/util"
 	"github.com/miekg/dns"
 	"net"
+	"sync"
+	"time"
 )
 
 const (
@@ -22,31 +25,103 @@ const (
 
 var log = clog.NewWithPlugin("pri-dns")
 
+type address struct {
+	name string
+	ads  []string
+}
+
 type PriDns struct {
 	Config *types.Config
 	Next   plugin.Handler
 	Store  db.Store
 	// 用于存储销毁钩子函数，这些函数将关闭插件时调用，比如配置刷新时需要关闭原有的插件实例，其中 key 为随机数
 	closeHook map[string]func()
-	// closeFunc 函数将在关闭时调用
-	closeFunc func() error
+	// closeFunc 函数将在实例销毁时调用
+	closeFunc   func() error
+	adsHistory  map[string]map[string]struct{}
+	pushHisChan chan address
+	hisMutex    sync.Mutex
+	initFunc    func() error
 }
 
 func NewPriDns(config *types.Config, store db.Store) *PriDns {
 	closeHook := make(map[string]func())
-	return &PriDns{Config: config, Store: store, closeHook: closeHook, closeFunc: func() error {
+	adsHistory := make(map[string]map[string]struct{})
+	pushHisChan := make(chan address, 1000)
+	ticker := time.NewTicker(time.Minute)
+
+	d := &PriDns{
+		Config:      config,
+		Store:       store,
+		closeHook:   closeHook,
+		adsHistory:  adsHistory,
+		pushHisChan: pushHisChan,
+	}
+
+	d.initFunc = func() error {
+		// 汇总地址
+		go func() {
+			for his := range pushHisChan {
+				func() {
+					d.hisMutex.Lock()
+					defer d.hisMutex.Unlock()
+
+					if adsHistory[his.name] == nil {
+						adsHistory[his.name] = make(map[string]struct{})
+					}
+					for _, ip := range his.ads {
+						adsHistory[his.name][ip] = struct{}{}
+					}
+				}()
+			}
+			fmt.Println("11111111", d)
+		}()
+
+		// 定时入库, 每分钟执行一次
+		go func() {
+			for _ = range ticker.C {
+				var mapTmp map[string]map[string]struct{}
+				func() {
+					d.hisMutex.Lock()
+					defer d.hisMutex.Unlock()
+					mapTmp, adsHistory = adsHistory, make(map[string]map[string]struct{})
+				}()
+
+				// 入库
+				ctx := context.Background()
+				for name, mp := range mapTmp {
+					his := make([]string, len(mp))
+					i := 0
+					for it, _ := range mp {
+						his[i] = it
+						i++
+					}
+					if err := d.Store.SavaHistory(ctx, name, his); err != nil {
+						log.Error(err)
+					}
+				}
+			}
+			fmt.Println("11111111", d)
+		}()
+		return nil
+	}
+	d.closeFunc = func() error {
 		for _, f := range closeHook {
 			f()
 		}
+		close(pushHisChan)
+		ticker.Stop()
 		return nil
-	}}
+	}
+
+	return d
 }
 
 // ServeDNS implements the plugin.Handle interface.
 func (d PriDns) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg) (int, error) {
 	state := request.Request{W: w, Req: r}
 
-	log.Infof("qname: %s RemoteIp: %s Type: %s QType: %v Class: %s QClass: %v",
+	log.Debugf("qname: %s RemoteIp: %s Type: %s QType: %v Class: %s QClass: %v",
 		state.Name(), state.IP(), state.Type(), state.QType(), state.Class(), state.QClass())
 
 	// step.1 如果配置了自定义解析，则直接响应配置的自定义解析即可
@@ -76,6 +151,9 @@ func (d PriDns) Name() string { return "pri-dns" }
 
 // RegisterCloseHook 注册关闭钩子函数，返回一个回调函数用于取消注册
 func (d PriDns) RegisterCloseHook(f func()) func() {
+	d.hisMutex.Lock()
+	defer d.hisMutex.Unlock()
+
 	key := uuid.New().String()
 	for {
 		if _, ok := d.closeHook[key]; ok {
@@ -87,6 +165,9 @@ func (d PriDns) RegisterCloseHook(f func()) func() {
 	d.closeHook[key] = f
 
 	return func() {
+		d.hisMutex.Lock()
+		defer d.hisMutex.Unlock()
+
 		delete(d.closeHook, key)
 	}
 }
@@ -202,12 +283,20 @@ func handForward(d PriDns, ctx context.Context, state request.Request) (ok bool,
 		}
 
 		// 转发请求
-		code, err = myForward.Run(proxies, ctx, state)
+		code2, err2, rrs := myForward.Run(proxies, ctx, state)
+		code = code2
+		err = err2
+
+		// 存储解析历史
+		if rrs != nil {
+			d.pushHisChan <- address{name: forwards[0].Name, ads: rrs}
+		}
 		return
 	}
 
 	return
-	// 规划化域名 '.' 'example.com.' - _ = plugin.Host("example.com.").NormalizeExact()[0]
 }
 
 //#endregion
+
+// 规划化域名 '.' 'example.com.' - _ = plugin.Host("example.com.").NormalizeExact()[0]

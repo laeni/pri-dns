@@ -3,6 +3,7 @@ package mysql
 import (
 	"context"
 	"database/sql"
+	cidr_merger "github.com/laeni/pri-dns/cidr-merger"
 	"github.com/laeni/pri-dns/db"
 	"github.com/laeni/pri-dns/util"
 	"strings"
@@ -43,11 +44,6 @@ func (s *StoreMysql) FindForwardByHostAndName(ctx context.Context, host, name st
 	for i := 0; i < len(forwardTemps); i++ {
 		temp := forwardTemps[i]
 
-		var history []string
-		if temp.History.String != "" {
-			history = strings.Split(temp.History.String, ",")
-		}
-
 		var snsSvr []string
 		if temp.DnsSvr.String != "" {
 			snsSvr = strings.Split(temp.DnsSvr.String, ",")
@@ -58,7 +54,6 @@ func (s *StoreMysql) FindForwardByHostAndName(ctx context.Context, host, name st
 			Host:       temp.Host,
 			Name:       temp.Name,
 			DnsSvr:     snsSvr,
-			History:    history,
 			DenyGlobal: strings.ToUpper(temp.DenyGlobal) == "Y",
 			Status:     temp.Status,
 			CreateTime: temp.CreateTime,
@@ -107,4 +102,55 @@ func (s *StoreMysql) FindDomainByHostAndName(ctx context.Context, host, name str
 		}
 	}
 	return domains
+}
+
+func (s *StoreMysql) SavaHistory(ctx context.Context, name string, newHis []string) error {
+	tx, err := s.db.Begin()
+	defer tx.Rollback()
+	if err != nil {
+		return err
+	}
+
+	var oldHis []string
+	historyTmp, err := s.queries.WithTx(tx).FindHistoryByName(ctx, name)
+	if err != nil {
+		if err != sql.ErrNoRows {
+			return err
+		}
+	} else {
+		oldHis = strings.Split(historyTmp.History.String, ",")
+	}
+
+	// 合并新老历史
+	ipHis := append(newHis, oldHis...)
+	// 从语义上再次进行合并
+	ipHis = cidr_merger.MergeIp(ipHis, false)
+
+	sava := len(oldHis) != len(ipHis)
+	if !sava {
+		for i := 0; i < len(ipHis); i++ {
+			if oldHis[i] != ipHis[i] {
+				sava = true
+				break
+			}
+		}
+	}
+	if sava {
+		if len(oldHis) == 0 {
+			err = s.queries.WithTx(tx).InsertHistory(ctx, InsertHistoryParams{
+				Name:    name,
+				History: sql.NullString{Valid: true, String: strings.Join(ipHis, ",")},
+			})
+		} else {
+			err = s.queries.WithTx(tx).UpdateHistory(ctx, UpdateHistoryParams{
+				Name:    name,
+				History: sql.NullString{Valid: true, String: strings.Join(ipHis, ",")},
+			})
+		}
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
 }
