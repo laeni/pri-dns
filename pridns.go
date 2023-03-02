@@ -2,7 +2,6 @@ package pridns
 
 import (
 	"context"
-	"fmt"
 	"github.com/coredns/coredns/plugin"
 	clog "github.com/coredns/coredns/plugin/pkg/log"
 	"github.com/coredns/coredns/request"
@@ -37,7 +36,8 @@ type PriDns struct {
 	// 用于存储销毁钩子函数，这些函数将关闭插件时调用，比如配置刷新时需要关闭原有的插件实例，其中 key 为随机数
 	closeHook map[string]func()
 	// closeFunc 函数将在实例销毁时调用
-	closeFunc   func() error
+	closeFunc func() error
+	// 域名和IP. {"laeni.cn": {"127.0.0.1":nil, "127.0.0.2":nil}}
 	adsHistory  map[string]map[string]struct{}
 	pushHisChan chan address
 	hisMutex    sync.Mutex
@@ -74,12 +74,11 @@ func NewPriDns(config *types.Config, store db.Store) *PriDns {
 					}
 				}()
 			}
-			fmt.Println("11111111", d)
 		}()
 
 		// 定时入库, 每分钟执行一次
 		go func() {
-			for _ = range ticker.C {
+			for range ticker.C {
 				var mapTmp map[string]map[string]struct{}
 				func() {
 					d.hisMutex.Lock()
@@ -92,7 +91,7 @@ func NewPriDns(config *types.Config, store db.Store) *PriDns {
 				for name, mp := range mapTmp {
 					his := make([]string, len(mp))
 					i := 0
-					for it, _ := range mp {
+					for it := range mp {
 						his[i] = it
 						i++
 					}
@@ -101,13 +100,13 @@ func NewPriDns(config *types.Config, store db.Store) *PriDns {
 					}
 				}
 			}
-			fmt.Println("11111111", d)
 		}()
 		return nil
 	}
 	d.closeFunc = func() error {
-		for _, f := range closeHook {
+		for key, f := range closeHook {
 			f()
+			delete(closeHook, key)
 		}
 		close(pushHisChan)
 		ticker.Stop()
@@ -118,7 +117,7 @@ func NewPriDns(config *types.Config, store db.Store) *PriDns {
 }
 
 // ServeDNS implements the plugin.Handle interface.
-func (d PriDns) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg) (int, error) {
+func (d *PriDns) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg) (int, error) {
 	state := request.Request{W: w, Req: r}
 
 	log.Debugf("qname: %s RemoteIp: %s Type: %s QType: %v Class: %s QClass: %v",
@@ -147,10 +146,10 @@ func (d PriDns) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg) 
 }
 
 // Name implements the plugin.Handle interface.
-func (d PriDns) Name() string { return "pri-dns" }
+func (d *PriDns) Name() string { return "pri-dns" }
 
-// RegisterCloseHook 注册关闭钩子函数，返回一个回调函数用于取消注册
-func (d PriDns) RegisterCloseHook(f func()) func() {
+// RegisterCloseHook 注册关闭钩子函数，返回一个回调函数用于取消注册; 如果钩子函数被调用，则也会自动取消注册
+func (d *PriDns) RegisterCloseHook(f func()) func() {
 	d.hisMutex.Lock()
 	defer d.hisMutex.Unlock()
 
@@ -207,7 +206,7 @@ func filterRecord[T db.RecordFilter](qname string, records []T) ([]T, bool) {
 //  1. 先查询本地添加的解析
 //  2. 如果本地没有对应解析则根据规则转发给上游服务器处理
 //     如果在规则列表中，则转发到根据规则中指定的上游服务器，否则让下一个插件处理
-func handQuery(d PriDns, ctx context.Context, state request.Request) []dns.RR {
+func handQuery(d *PriDns, ctx context.Context, state request.Request) []dns.RR {
 	qname := state.Name()
 	qname = qname[:len(qname)-1]
 
@@ -257,7 +256,7 @@ func handQuery(d PriDns, ctx context.Context, state request.Request) []dns.RR {
 
 // 尝试处理转发，如果 handForward 已经做出响应（如一个查询需要进行转发或者出现异常情况需要返回），则 ok 为 true，此时直接将 code, err 作为 ServeDNS 返回值即可
 // 如果 ok 为 false，则表示 handForward 方法不处理查询，这时一般需要转发给下一个插件处理
-func handForward(d PriDns, ctx context.Context, state request.Request) (ok bool, code int, err error) {
+func handForward(d *PriDns, ctx context.Context, state request.Request) (ok bool, code int, err error) {
 	qname := state.Name()
 	qname = qname[:len(qname)-1]
 

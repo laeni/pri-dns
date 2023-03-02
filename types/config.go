@@ -7,7 +7,8 @@ import (
 
 // Config 表示插件配置
 type Config struct {
-	AdminPassword string
+	HostPort      string // 控制台管理端口,如果不配置则不会开启控制台
+	AdminPassword string // 管理员身份确认密码，提供该密码可以拥有管理员身份，否则将被视为普通用户
 	StoreType     string
 	MySQL         MySQLConfig
 	Tls           map[string]*tls.Config // TLS 配置。key 为IP，value 为该IP对应的主机名与 TLS 配置

@@ -34,6 +34,14 @@ func setup(c *caddy.Controller) error {
 	p := NewPriDns(config, store)
 	c.OnStartup(p.initFunc)
 	c.OnShutdown(p.closeFunc)
+
+	if config.HostPort != "" {
+		err := StartApp(p)
+		if err != nil {
+			return err
+		}
+	}
+
 	dnsserver.GetConfig(c).AddPlugin(func(next plugin.Handler) plugin.Handler {
 		p.Next = next
 		return p
@@ -73,6 +81,12 @@ func parsePriDns(c *caddy.Controller) (*types.Config, error) {
 						return nil, c.Err("'adminPassword' 配置错误，它有且仅有一个参数")
 					}
 					config.AdminPassword = adminPasswordArgs[0]
+				case "adminPort":
+					adminPortArgs := c.RemainingArgs()
+					if len(adminPortArgs) != 1 {
+						return nil, c.Err("'adminPort' 配置错误，它有且仅有一个参数")
+					}
+					config.HostPort = adminPortArgs[0]
 				case "mysql":
 					if config.StoreType != "" {
 						return nil, c.Err("配置重复定义: mysql")
