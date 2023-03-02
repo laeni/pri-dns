@@ -1,6 +1,7 @@
 package pridns
 
 import (
+	"context"
 	"fmt"
 	"github.com/kataras/iris/v12"
 	context2 "github.com/kataras/iris/v12/context"
@@ -38,7 +39,7 @@ func StartApp(p *PriDns) error {
 						wg.Done()
 						return
 					}
-					resp, errRes := http.Get(fmt.Sprintf("http://127.0.0.1:%s/health", strings.Split(p.Config.HostPort, ":")[1]))
+					resp, errRes := http.Get(fmt.Sprintf("http://127.0.0.1:%s/health", strings.Split(p.Config.ServerPort, ":")[1]))
 					if errRes == nil && (resp.StatusCode >= 200 && resp.StatusCode < 300) {
 						wg.Done()
 						return
@@ -49,7 +50,7 @@ func StartApp(p *PriDns) error {
 				log.Error("后台服务健康检查无法通过", healthErr)
 			}()
 
-			err = app.Listen(p.Config.HostPort)
+			err = app.Listen(p.Config.ServerPort)
 			return err
 		}()
 	}()
@@ -66,9 +67,11 @@ func newApp(store db.Store) *iris.Application {
 	apiParty := app.Party("/api")
 	{
 		getIpLine := func(ctx context2.Context) {
+			level := ctx.URLParamIntDefault("level", 0)
+
 			addr := ctx.RemoteAddr()
-			store.SavaHistory()
-			ctx.WriteString(addr)
+			hosts := store.FindHistoryByHost(context.Background(), addr)
+			ctx.WriteString(fmt.Sprintf("Level: %d", level) + " - " + strings.Join(hosts, ","))
 		}
 		apiParty.Get("/ip-line", getIpLine)
 		apiParty.Get("/ip-line.txt", getIpLine)

@@ -206,3 +206,9 @@ VALUES (?, ?);
 update history
 set history = ?
 where name = ?;
+
+-- FindForwardByHost 查询客户端的转发域名
+-- name: FindForwardByHost :many
+select host, name, deny_global
+from forward
+where status = 'ENABLE' and (host = '' or host = ?);

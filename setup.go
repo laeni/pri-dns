@@ -35,7 +35,7 @@ func setup(c *caddy.Controller) error {
 	c.OnStartup(p.initFunc)
 	c.OnShutdown(p.closeFunc)
 
-	if config.HostPort != "" {
+	if config.ServerPort != "" {
 		err := StartApp(p)
 		if err != nil {
 			return err
@@ -81,12 +81,12 @@ func parsePriDns(c *caddy.Controller) (*types.Config, error) {
 						return nil, c.Err("'adminPassword' 配置错误，它有且仅有一个参数")
 					}
 					config.AdminPassword = adminPasswordArgs[0]
-				case "adminPort":
-					adminPortArgs := c.RemainingArgs()
-					if len(adminPortArgs) != 1 {
-						return nil, c.Err("'adminPort' 配置错误，它有且仅有一个参数")
+				case "serverPort":
+					svrPortArgs := c.RemainingArgs()
+					if len(svrPortArgs) != 1 {
+						return nil, c.Err("'serverPort' 配置错误，它有且仅有一个参数")
 					}
-					config.HostPort = adminPortArgs[0]
+					config.ServerPort = svrPortArgs[0]
 				case "mysql":
 					if config.StoreType != "" {
 						return nil, c.Err("配置重复定义: mysql")

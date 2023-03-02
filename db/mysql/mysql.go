@@ -3,6 +3,7 @@ package mysql
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	cidr_merger "github.com/laeni/pri-dns/cidr-merger"
 	"github.com/laeni/pri-dns/db"
 	"github.com/laeni/pri-dns/util"
@@ -24,10 +25,10 @@ func (s *StoreMysql) FindForwardByHostAndName(ctx context.Context, host, name st
 	var forwardTemps []Forward
 	var err error
 	tx, err := s.db.Begin()
-	defer tx.Rollback()
 	if err != nil {
 		panic(err)
 	}
+	defer tx.Rollback()
 	if host != "" {
 		forwardTemps, err = s.queries.WithTx(tx).FindForwardByHostAndNameLike(ctx, host, names)
 	} else {
@@ -69,10 +70,10 @@ func (s *StoreMysql) FindDomainByHostAndName(ctx context.Context, host, name str
 	var domainTemps []Domain
 	var err error
 	tx, err := s.db.Begin()
-	defer tx.Rollback()
 	if err != nil {
 		panic(err)
 	}
+	defer tx.Rollback()
 	if host != "" {
 		domainTemps, err = s.queries.WithTx(tx).FindDomainByHostAndNameLike(ctx, host, names)
 	} else {
@@ -106,10 +107,10 @@ func (s *StoreMysql) FindDomainByHostAndName(ctx context.Context, host, name str
 
 func (s *StoreMysql) SavaHistory(ctx context.Context, name string, newHis []string) error {
 	tx, err := s.db.Begin()
-	defer tx.Rollback()
 	if err != nil {
 		return err
 	}
+	defer tx.Rollback()
 
 	var oldHis []string
 	historyTmp, err := s.queries.WithTx(tx).FindHistoryByName(ctx, name)
@@ -153,4 +154,116 @@ func (s *StoreMysql) SavaHistory(ctx context.Context, name string, newHis []stri
 	}
 
 	return tx.Commit()
+}
+
+func (s *StoreMysql) FindHistoryByHost(ctx context.Context, host string) []string {
+	tx, err := s.db.Begin()
+	if err != nil {
+		panic(err)
+	}
+	defer tx.Rollback()
+
+	// 查询全局和客户端对应的转发域名
+	forwards, err := s.queries.WithTx(tx).FindForwardByHost(ctx, host)
+	if err != nil {
+		panic(err)
+	}
+
+	// 去除否定用途的以及被否定数据否定的全局域名
+	denied := make(map[string]struct{}, 0)
+	for _, row := range forwards {
+		if row.Host != "" && row.DenyGlobal == "Y" {
+			denied[row.Name] = struct{}{}
+		}
+	}
+	j := 0
+	for i, row := range forwards {
+		if row.Host == "" {
+			if _, ok := denied[row.Name]; ok {
+				continue
+			}
+		} else {
+			if row.DenyGlobal == "Y" {
+				continue
+			}
+		}
+		forwards[j] = forwards[i]
+		j++
+	}
+	forwards = forwards[:j]
+
+	// 查询转发域名对应的解析历史
+	his, err := findHistoryHostsByNames(ctx, tx, forwards)
+	if err != nil {
+		panic(err)
+	}
+
+	// 对解析历史进行合并
+	his = mergeHis(his)
+
+	tx.Commit()
+
+	return his
+}
+
+// 查询域名对应的解析IP历史
+func findHistoryHostsByNames(ctx context.Context, tx *sql.Tx, forwards []FindForwardByHostRow) ([]string, error) {
+	l := len(forwards)
+	sqlStr := fmt.Sprintf("select history from history where %s", func() string {
+		if l == 0 {
+			return "0=1"
+		}
+		args := make([]string, l)
+		for i := 0; i < l; i++ {
+			args[i] = "?"
+		}
+		return "name in (" + strings.Join(args, ", ") + ")"
+	}())
+
+	args := make([]interface{}, l)
+	for i, s := range forwards {
+		args[i] = s.Name
+	}
+
+	rows, err := tx.QueryContext(ctx, sqlStr, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var history sql.NullString
+		if err := rows.Scan(&history); err != nil {
+			return nil, err
+		}
+		if history.String != "" {
+			items = append(items, strings.Split(history.String, ",")...)
+		}
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+func mergeHis(his []string) []string {
+	l := len(his)
+
+	// 简单去重
+	hisMap := make(map[string]struct{}, l)
+	for _, h := range his {
+		hisMap[h] = struct{}{}
+	}
+	i := 0
+	for s := range hisMap {
+		his[i] = s
+		i++
+	}
+	his = his[:i]
+
+	// 根据IP范围语义进行合并
+	return cidr_merger.MergeIp(his, false)
 }

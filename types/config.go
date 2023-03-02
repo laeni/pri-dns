@@ -7,7 +7,7 @@ import (
 
 // Config 表示插件配置
 type Config struct {
-	HostPort      string // 控制台管理端口,如果不配置则不会开启控制台
+	ServerPort    string // 控制台管理端口,如果不配置则不会开启控制台
 	AdminPassword string // 管理员身份确认密码，提供该密码可以拥有管理员身份，否则将被视为普通用户
 	StoreType     string
 	MySQL         MySQLConfig

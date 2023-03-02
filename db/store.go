@@ -14,6 +14,9 @@ type Store interface {
 
 	// SavaHistory 保存历史
 	SavaHistory(ctx context.Context, name string, newHis []string) error
+
+	// FindHistoryByHost 查询客户端对应的解析历史，当 host 为 “” 时表示查询全局配置.
+	FindHistoryByHost(ctx context.Context, host string) []string
 }
 
 type RecordFilter interface {
@@ -60,8 +63,6 @@ type Forward struct {
 	Name string
 	// 转发目标DNS服务器
 	DnsSvr []string
-	// 解析记录，用于导出使用
-	History []string
 	// 是否拒绝全局解析
 	DenyGlobal bool
 	// 状态。<br />ENABLE-启用
