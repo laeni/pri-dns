@@ -53,7 +53,7 @@ func Run(proxies []*Proxy, ctx context.Context, state request.Request) (int, err
 	fails := 0
 	var upstreamErr error
 	i := 0
-	list := util.RandomList(proxies)
+	list := util.SliceRandom(proxies)
 	deadline := time.Now().Add(defaultTimeout)
 	for time.Now().Before(deadline) {
 		// 如果没成功且还有时间则重试

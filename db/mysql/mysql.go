@@ -198,8 +198,11 @@ func (s *StoreMysql) FindHistoryByHost(ctx context.Context, host string) []strin
 		panic(err)
 	}
 
-	// 对解析历史进行合并
-	his = mergeHis(his)
+	// 简单去重
+	his = util.SliceDeduplication(his)
+
+	// 根据IP范围语义进行合并
+	his = cidr_merger.MergeIp(his, false)
 
 	tx.Commit()
 
@@ -247,23 +250,4 @@ func findHistoryHostsByNames(ctx context.Context, tx *sql.Tx, forwards []FindFor
 		return nil, err
 	}
 	return items, nil
-}
-
-func mergeHis(his []string) []string {
-	l := len(his)
-
-	// 简单去重
-	hisMap := make(map[string]struct{}, l)
-	for _, h := range his {
-		hisMap[h] = struct{}{}
-	}
-	i := 0
-	for s := range hisMap {
-		his[i] = s
-		i++
-	}
-	his = his[:i]
-
-	// 根据IP范围语义进行合并
-	return cidr_merger.MergeIp(his, false)
 }

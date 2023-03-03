@@ -43,6 +43,13 @@ func parse(text string) (IRange, error) {
 	return nil, &net.ParseError{Type: "ip/CIDR address/range", Text: text}
 }
 
+// MergeIRange 对ip进行合并
+// see https://github.com/zhanhb/cidr-merger
+func MergeIRange(result []IRange, typeRange bool) []IRange {
+	result = sortAndMerge(result)
+	return convertBatch(result, typeRange)
+}
+
 // MergeIp 对ip进行合并
 // see https://github.com/zhanhb/cidr-merger
 func MergeIp(in []string, typeRange bool) []string {
@@ -55,12 +62,29 @@ func MergeIp(in []string, typeRange bool) []string {
 		}
 	}
 
-	result = sortAndMerge(result)
-	result = convertBatch(result, typeRange)
+	result = MergeIRange(result, typeRange)
 
 	resArr := make([]string, 0)
 	for _, r := range result {
 		resArr = append(resArr, r.String())
+	}
+
+	return resArr
+}
+
+// MergeIPNet 对ip进行合并
+// see https://github.com/zhanhb/cidr-merger
+func MergeIPNet(in []*net.IPNet, typeRange bool) []*net.IPNet {
+	result := make([]IRange, len(in))
+	for i, it := range in {
+		result[i] = IpNetWrapper{IPNet: it}
+	}
+
+	result = MergeIRange(result, typeRange)
+
+	resArr := make([]*net.IPNet, 0, len(result))
+	for _, r := range result {
+		resArr = append(resArr, r.ToIpNets()...)
 	}
 
 	return resArr
