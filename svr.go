@@ -121,16 +121,21 @@ var priNets = []net.IPNet{
 }
 
 func mergeIpByMultiMaskAndLevel(hosts []string, arr [][2]int, pri bool) []string {
-	dst := make([]string, 0, len(hosts)*len(arr))
+	dst := make([]*net.IPNet, 0, len(hosts)*len(arr))
 
 	for _, it := range arr {
 		dst = append(dst, mergeIpByMaskAndLevel(hosts, it[0], it[1], pri)...)
 	}
 
-	return cidr_merger.MergeIp(dst, false)
+	ipNets := cidr_merger.MergeIPNet(dst, false)
+	ips := make([]string, len(ipNets))
+	for i, ipNet := range ipNets {
+		ips[i] = ipNet.String()
+	}
+	return ips
 }
 
-func mergeIpByMaskAndLevel(hosts []string, mask, level int, pri bool) []string {
+func mergeIpByMaskAndLevel(hosts []string, mask, level int, pri bool) []*net.IPNet {
 	l := len(hosts)
 
 	hostWrappers := make([]*net.IPNet, l) // 原始IP
@@ -198,14 +203,15 @@ ForHosts:
 	}
 
 	// 根据 level 指定的数量觉得是否取原始数据还是他们对应期望网络地址
-	dst := make([]string, 0, j)
+	dst := make([]*net.IPNet, 0, j)
 	for netKey, nets := range ipMap {
 		if nets != nil {
 			if len(nets) >= level {
-				dst = append(dst, netKey)
+				_, ipNet, _ := net.ParseCIDR(netKey)
+				dst = append(dst, ipNet)
 			} else {
 				for _, it := range nets {
-					dst = append(dst, it.String())
+					dst = append(dst, it)
 				}
 			}
 		}
