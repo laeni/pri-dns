@@ -96,8 +96,7 @@ func newApp(store db.Store) *iris.Application {
 			}
 
 			hosts := store.FindHistoryByHost(context.Background(), addr)
-			pri := ctx.URLParamBoolDefault("pri", true)
-			hosts = mergeIpByMultiMaskAndLevel(hosts, arr, pri)
+			hosts = mergeIpByMultiMaskAndLevel(hosts, arr, ctx.URLParamBoolDefault("pri", true))
 
 			ctx.WriteString(strings.Join(hosts, ","))
 		}
@@ -108,12 +107,7 @@ func newApp(store db.Store) *iris.Application {
 	return app
 }
 
-type IPNetWrapper struct {
-	IPNet  *net.IPNet
-	String string
-}
-
-// 排除私有地址
+// 私有地址
 var priNets = []net.IPNet{
 	{IP: net.ParseIP("10.0.0.0"), Mask: net.CIDRMask(8, 8*net.IPv4len)},
 	{IP: net.ParseIP("172.16.0.0"), Mask: net.CIDRMask(12, 8*net.IPv4len)},
@@ -121,12 +115,40 @@ var priNets = []net.IPNet{
 }
 
 func mergeIpByMultiMaskAndLevel(hosts []string, arr [][2]int, pri bool) []string {
-	dst := make([]*net.IPNet, 0, len(hosts)*len(arr))
+	// 解析IP地址，并去除私有地址
+	hostIPNets := make([]*net.IPNet, len(hosts))
+	i := 0
+HostFor:
+	for _, host := range hosts {
+		// 如果不是 CIDR 格式则在末尾拼接掩码将其转换为 CIDR 格式
+		if strings.IndexByte(host, '/') == -1 {
+			host = fmt.Sprintf("%s/%d", host, 32)
+		}
 
+		_, ipNet, err := net.ParseCIDR(host)
+		if err != nil {
+			continue
+		}
+		// 可能需要排除私有地址
+		if pri {
+			for _, priNet := range priNets {
+				if priNet.Contains(ipNet.IP) {
+					continue HostFor
+				}
+			}
+		}
+		hostIPNets[i] = ipNet
+		i++
+	}
+	hostIPNets = hostIPNets[:i]
+
+	// 根据规则进行合并
+	dst := make([]*net.IPNet, 0, len(hostIPNets)*len(arr))
 	for _, it := range arr {
-		dst = append(dst, mergeIpByMaskAndLevel(hosts, it[0], it[1], pri)...)
+		dst = append(dst, mergeIpByMaskAndLevel(hostIPNets, it[0], it[1])...)
 	}
 
+	// 排序和去重
 	ipNets := cidr_merger.MergeIPNet(dst, false)
 	ips := make([]string, len(ipNets))
 	for i, ipNet := range ipNets {
@@ -135,60 +157,30 @@ func mergeIpByMultiMaskAndLevel(hosts []string, arr [][2]int, pri bool) []string
 	return ips
 }
 
-func mergeIpByMaskAndLevel(hosts []string, mask, level int, pri bool) []*net.IPNet {
+func mergeIpByMaskAndLevel(hosts []*net.IPNet, mask, level int) []*net.IPNet {
 	l := len(hosts)
 
-	hostWrappers := make([]*net.IPNet, l) // 原始IP
-	ipNets := make([]*net.IPNet, l)       // 目标网络地址
+	ipNets := make([]*net.IPNet, l) // 目标网络地址
 	j := 0
-ForHosts:
 	for _, host := range hosts {
-		ip, ipNet, err := net.ParseCIDR(host)
-		if err != nil {
-			continue
-		}
-		// 可能需要排除私有地址
-		if pri {
-			for _, priNet := range priNets {
-				if priNet.Contains(ip) {
-					continue ForHosts
-				}
+		size, _ := host.Mask.Size()
+		if mask < size {
+			mask := net.CIDRMask(mask, 8*net.IPv4len)
+			ipNets[j] = &net.IPNet{
+				IP:   host.IP.Mask(mask),
+				Mask: mask,
 			}
-		}
-
-		hostTmp := host
-
-		// 预处理 - 1.如果不是网络地址的，将其转换为网络地址 2.如果目标掩码位数小于实际掩码位数的，以目标掩码位数为准
-		idx := strings.IndexByte(hostTmp, '/')
-		if idx == -1 {
-			hostTmp = fmt.Sprintf("%s/%d", hostTmp, mask)
 		} else {
-			addr, maskStr := hostTmp[:idx], hostTmp[idx+1:]
-			mask2, err := strconv.Atoi(maskStr)
-			if err != nil {
-				continue
-			}
-			if mask < mask2 {
-				hostTmp = fmt.Sprintf("%s/%d", addr, mask)
-			}
+			ipNets[j] = host
 		}
-
-		_, ipNetTmp, err := net.ParseCIDR(hostTmp)
-		if err != nil {
-			continue
-		}
-
-		hostWrappers[j] = ipNet
-		ipNets[j] = ipNetTmp
 		j++
 	}
-	hostWrappers = hostWrappers[:j]
 	ipNets = ipNets[:j]
 	ipNets = cidr_merger.MergeIPNet(ipNets, false)
 
 	// 将原始ip根据目标网络地址进行分组
 	ipMap := make(map[string][]*net.IPNet, len(ipNets))
-	for _, item := range hostWrappers {
+	for _, item := range hosts {
 		for _, ipNet := range ipNets {
 			if ipNet.Contains(item.IP) {
 				key := ipNet.String()
