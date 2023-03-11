@@ -1,4 +1,4 @@
-package pridns
+package pri_dns
 
 import (
 	"context"
@@ -81,8 +81,9 @@ func newApp(store db.Store) *iris.Application {
 					for i := 0; i < len(masks); i++ {
 						mask, maskErr := strconv.Atoi(masks[i])
 						level, levelErr := strconv.Atoi(levels[i])
-						if maskErr != nil || levelErr != nil || mask < 1 || mask > 24 || level < 1 {
+						if maskErr != nil || levelErr != nil || mask < 1 || mask > 32 || level < 1 {
 							ctx.StopWithStatus(http.StatusBadRequest)
+							return
 						} else {
 							arr = append(arr, [2]int{mask, level})
 						}

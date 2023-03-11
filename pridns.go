@@ -1,4 +1,4 @@
-package pridns
+package pri_dns
 
 import (
 	"context"
