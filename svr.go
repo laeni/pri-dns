@@ -70,34 +70,75 @@ func newApp(store db.Store) *iris.Application {
 	{
 		getIpLine := func(ctx iris.Context) {
 			addr := ctx.RemoteAddr()
-
-			// mask=8&level=100 mask=8&level=100
-			query := ctx.Request().URL.Query()
-			masks, maskOk := query["mask"]    // 掩码位数. 取值为 1-32
-			levels, levelOk := query["level"] // 在一个特定的网段下（网段由具体某个IP和mask决定），如果存在的解析历史数量达到该值，则直接取该网段的网络地址
-			var arr [][2]int
-			if maskOk || levelOk {
-				if len(masks) == len(levels) { // 解析
-					for i := 0; i < len(masks); i++ {
-						mask, maskErr := strconv.Atoi(masks[i])
-						level, levelErr := strconv.Atoi(levels[i])
-						if maskErr != nil || levelErr != nil || mask < 1 || mask > 32 || level < 1 {
-							ctx.StopWithStatus(http.StatusBadRequest)
-							return
-						} else {
-							arr = append(arr, [2]int{mask, level})
-						}
-					}
-				} else { // 异常
-					ctx.StopWithStatus(http.StatusBadRequest)
-				}
-			} else {
-				//                                  256       128       64        32       16       8        4
-				arr = [][2]int{{8, 100}, {16, 50}, {24, 25}, {25, 20}, {26, 10}, {27, 5}, {28, 4}, {29, 3}, {30, 2}}
-			}
+			pri := ctx.URLParamBoolDefault("pri", true)
+			v := ctx.URLParamIntDefault("v", 2)
 
 			hosts := store.FindHistoryByHost(context.Background(), addr)
-			hosts = mergeIpByMultiMaskAndLevel(hosts, arr, ctx.URLParamBoolDefault("pri", true))
+			{
+				// 解析IP地址，并去除私有地址
+				hostIPNets := strToIpNet(hosts, pri)
+
+				// 根据版本进行合并
+				switch v {
+				case 1: // mask=8&level=100 & mask=12&level=50 & mask=16&level=10 & mask=24&level=1
+					query := ctx.Request().URL.Query()
+					masks, maskOk := query["mask"]    // 掩码位数. 取值为 1-32
+					levels, levelOk := query["level"] // 在一个特定的网段下（网段由具体某个IP和mask决定），如果存在的解析历史数量达到该值，则直接取该网段的网络地址
+					var arr [][2]int
+					if maskOk || levelOk {
+						if len(masks) == len(levels) { // 解析
+							for i := 0; i < len(masks); i++ {
+								mask, maskErr := strconv.Atoi(masks[i])
+								level, levelErr := strconv.Atoi(levels[i])
+								if maskErr != nil || levelErr != nil || mask < 1 || mask > 32 || level < 1 {
+									ctx.StopWithStatus(http.StatusBadRequest)
+									return
+								} else {
+									arr = append(arr, [2]int{mask, level})
+								}
+							}
+						} else { // 异常
+							ctx.StopWithStatus(http.StatusBadRequest)
+							return
+						}
+					} else {
+						//                                  256       128       64        32       16       8        4
+						arr = [][2]int{{8, 100}, {16, 50}, {24, 25}, {25, 20}, {26, 10}, {27, 5}, {28, 4}, {29, 3}, {30, 2}}
+					}
+
+					hostIPNets = mergeIpV1(hostIPNets, pri, arr)
+				case 2: // level24=1 & level16=5 & level8=10
+					query := ctx.Request().URL.Query()
+					levels, levelOk := query["level"]
+					var level [3]int
+					if levelOk {
+						if len(levels) == 3 { // 解析
+							for i := 0; i < 3; i++ {
+								levelInt, levelErr := strconv.Atoi(levels[i])
+								if levelErr != nil || levelInt < 1 {
+									ctx.StopWithStatus(http.StatusBadRequest)
+									return
+								} else {
+									level[i] = levelInt
+								}
+							}
+						} else { // 异常
+							ctx.StopWithStatus(http.StatusBadRequest)
+							return
+						}
+					} else {
+						level = [...]int{1, 3, 10}
+					}
+
+					hostIPNets = mergeIpV2(hostIPNets, pri, level)
+				default:
+					ctx.StopWithStatus(http.StatusBadRequest)
+					return
+				}
+
+				// 排序、去重、转为String
+				hosts = ipNetToString(cidrMerger.MergeIPNet(hostIPNets, false))
+			}
 
 			ctx.WriteString(strings.Join(hosts, ","))
 		}
@@ -115,9 +156,60 @@ var priNets = []net.IPNet{
 	{IP: net.ParseIP("192.168.0.0"), Mask: net.CIDRMask(16, 8*net.IPv4len)},
 }
 
+// mergeIpV1 V1版本的合并规则，明确通过指定将达到指定数量的原始IP进行合并，
+// 比如 'mask=16&level=10' 表示如果存在10个ip在16位掩码时的网络地址相同，则用16位掩码的网络地址表示它们。
+// mask和level可以出现多次，且必须成对出现，当出现多次时，分别用他们和原始IP进行计算，并将每次得到的结果在最后进行合并。
 // pri 参数表示默认情况下是否需要过滤掉内网IP
-func mergeIpByMultiMaskAndLevel(hosts []string, arr [][2]int, pri bool) []string {
-	// 解析IP地址，并去除私有地址
+func mergeIpV1(hostIPNets []*net.IPNet, pri bool, arr [][2]int) []*net.IPNet {
+	dst := make([]*net.IPNet, 0, len(hostIPNets)*len(arr))
+	for _, it := range arr {
+		dst = append(dst, mergeIpByMaskAndLevel(hostIPNets, it[0], it[1], pri)...)
+	}
+	return dst
+}
+
+// mergeIpV2 对IP进行简单合并，合并分为3步：
+// 第1步，对原始数据进行合并，合并规则和版本1一样，但此步骤中明确指定mask为24，level值为第1个level参数的值
+// 第2步，合并规则和第1步一样，但此步骤的输入数据不再是原始IP，而是第1步中生成的结果，且明确指定mask为16，level值为第2个level参数的值
+// 第3步，再次重复第2步，此步骤的输入数据也不是原始IP，而是第2步中生成的结果，且明确指定mask为8，level值为第3个level参数的值。此步骤得到的结果为最终结果
+func mergeIpV2(hostIPNets []*net.IPNet, pri bool, level [3]int) []*net.IPNet {
+	// 从第2步开始，需要把不符合进入下一步的数据筛选出来
+	other := make([]*net.IPNet, 0, len(hostIPNets))
+
+	// 第1步
+	hostIPNets = mergeIpByMaskAndLevel(hostIPNets, 24, level[0], pri)
+
+	// 第2步
+	i := 0
+	for _, hostIPNet := range hostIPNets {
+		maskSize, _ := hostIPNet.Mask.Size()
+		if maskSize > 24 {
+			other = append(other, hostIPNet)
+		} else {
+			hostIPNets[i] = hostIPNet
+			i++
+		}
+	}
+	hostIPNets = mergeIpByMaskAndLevel(hostIPNets[:i], 16, level[1], pri)
+
+	// 第3步
+	i = 0
+	for _, hostIPNet := range hostIPNets {
+		maskSize, _ := hostIPNet.Mask.Size()
+		if maskSize > 16 {
+			other = append(other, hostIPNet)
+		} else {
+			hostIPNets[i] = hostIPNet
+			i++
+		}
+	}
+	hostIPNets = mergeIpByMaskAndLevel(hostIPNets[:i], 8, level[1], pri)
+
+	return append(hostIPNets, other...)
+}
+
+// 将String格式的IP转换为网段对象
+func strToIpNet(hosts []string, pri bool) []*net.IPNet {
 	hostIPNets := make([]*net.IPNet, len(hosts))
 	i := 0
 HostFor:
@@ -142,16 +234,11 @@ HostFor:
 		hostIPNets[i] = ipNet
 		i++
 	}
-	hostIPNets = hostIPNets[:i]
+	return hostIPNets[:i]
+}
 
-	// 根据规则进行合并
-	dst := make([]*net.IPNet, 0, len(hostIPNets)*len(arr))
-	for _, it := range arr {
-		dst = append(dst, mergeIpByMaskAndLevel(hostIPNets, it[0], it[1], pri)...)
-	}
-
-	// 排序和去重
-	ipNets := cidrMerger.MergeIPNet(dst, false)
+// 将网段对象格式的IP转换为String
+func ipNetToString(ipNets []*net.IPNet) []string {
 	ips := make([]string, len(ipNets))
 	for i, ipNet := range ipNets {
 		ips[i] = ipNet.String()
