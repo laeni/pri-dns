@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/kataras/iris/v12"
-	cidr_merger "github.com/laeni/pri-dns/cidr-merger"
+	cidrMerger "github.com/laeni/pri-dns/cidr-merger"
 	"github.com/laeni/pri-dns/db"
 	"net"
 	"net/http"
@@ -115,6 +115,7 @@ var priNets = []net.IPNet{
 	{IP: net.ParseIP("192.168.0.0"), Mask: net.CIDRMask(16, 8*net.IPv4len)},
 }
 
+// pri 参数表示默认情况下是否需要过滤掉内网IP
 func mergeIpByMultiMaskAndLevel(hosts []string, arr [][2]int, pri bool) []string {
 	// 解析IP地址，并去除私有地址
 	hostIPNets := make([]*net.IPNet, len(hosts))
@@ -146,11 +147,11 @@ HostFor:
 	// 根据规则进行合并
 	dst := make([]*net.IPNet, 0, len(hostIPNets)*len(arr))
 	for _, it := range arr {
-		dst = append(dst, mergeIpByMaskAndLevel(hostIPNets, it[0], it[1])...)
+		dst = append(dst, mergeIpByMaskAndLevel(hostIPNets, it[0], it[1], pri)...)
 	}
 
 	// 排序和去重
-	ipNets := cidr_merger.MergeIPNet(dst, false)
+	ipNets := cidrMerger.MergeIPNet(dst, false)
 	ips := make([]string, len(ipNets))
 	for i, ipNet := range ipNets {
 		ips[i] = ipNet.String()
@@ -158,26 +159,42 @@ HostFor:
 	return ips
 }
 
-func mergeIpByMaskAndLevel(hosts []*net.IPNet, mask, level int) []*net.IPNet {
+func mergeIpByMaskAndLevel(hosts []*net.IPNet, mask, level int, pri bool) []*net.IPNet {
 	l := len(hosts)
 
 	ipNets := make([]*net.IPNet, l) // 目标网络地址
 	j := 0
+HostFor:
 	for _, host := range hosts {
 		size, _ := host.Mask.Size()
 		if mask < size {
 			mask := net.CIDRMask(mask, 8*net.IPv4len)
-			ipNets[j] = &net.IPNet{
-				IP:   host.IP.Mask(mask),
-				Mask: mask,
+			tarIpNet := &net.IPNet{IP: host.IP.Mask(mask), Mask: mask}
+			// 如果需要过滤内网IP，则当指定掩码的时候，生成的IP不得是内网IP，如果是，则需要选择一个更长的掩码以满足要求
+			if pri {
+				priMask, ok := isPriIpNet(tarIpNet)
+				for ok {
+					priMaskSize, _ := priMask.Size()
+					if priMaskSize < size {
+						tarIpNet = &net.IPNet{IP: host.IP.Mask(priMask), Mask: priMask}
+						// 新生成的网段有可能还是包含内网地址，所以还需要继续处理（由于前面已经过滤掉内网地址，所以这里当掩码长度大于等于内网掩码时一定存在不不包含内网的网段）
+						priMask, ok = isPriIpNet(tarIpNet)
+					} else {
+						ipNets[j] = host
+						j++
+						continue HostFor
+					}
+				}
 			}
+			ipNets[j] = tarIpNet
+			j++
 		} else {
 			ipNets[j] = host
+			j++
 		}
-		j++
 	}
 	ipNets = ipNets[:j]
-	ipNets = cidr_merger.MergeIPNet(ipNets, false)
+	ipNets = cidrMerger.MergeIPNet(ipNets, false)
 
 	// 将原始ip根据目标网络地址进行分组
 	ipMap := make(map[string][]*net.IPNet, len(ipNets))
@@ -211,4 +228,14 @@ func mergeIpByMaskAndLevel(hosts []*net.IPNet, mask, level int) []*net.IPNet {
 	}
 
 	return dst
+}
+
+// isPriIpNet 判断目标网络是否包含内网地址，如果是的话，返回包含的内网的掩码
+func isPriIpNet(ipNet *net.IPNet) (net.IPMask, bool) {
+	for _, priIpNet := range priNets {
+		if ipNet.Contains(priIpNet.IP) {
+			return priIpNet.Mask, true
+		}
+	}
+	return nil, false
 }
