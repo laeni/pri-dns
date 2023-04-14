@@ -26,26 +26,26 @@ type IRange interface {
 }
 
 type Range struct {
-	start net.IP
-	end   net.IP
+	Start net.IP
+	End   net.IP
 }
 
 func (r *Range) familyLength() int {
-	return len(r.start)
+	return len(r.Start)
 }
 func (r *Range) ToIp() net.IP {
-	if bytes.Equal(r.start, r.end) {
-		return r.start
+	if bytes.Equal(r.Start, r.End) {
+		return r.Start
 	}
 	return nil
 }
 func (r *Range) ToIpNets() []*net.IPNet {
-	s, end := r.start, r.end
+	s, end := r.Start, r.End
 	ipBits := len(s) * 8
-	assert(ipBits == len(end)*8, "len(r.start) == len(r.end)")
+	assert(ipBits == len(end)*8, "len(r.Start) == len(r.End)")
 	var result []*net.IPNet
 	for {
-		assert(bytes.Compare(s, end) <= 0, "s <= end")
+		assert(bytes.Compare(s, end) <= 0, "s <= End")
 		cidr := max(prefixLength(xor(addOne(end), s)), ipBits-trailingZeros(s))
 		ipNet := &net.IPNet{IP: s, Mask: net.CIDRMask(cidr, ipBits)}
 		result = append(result, ipNet)
@@ -60,7 +60,7 @@ func (r *Range) ToRange() *Range {
 	return r
 }
 func (r *Range) String() string {
-	return ipToString(r.start) + "-" + ipToString(r.end)
+	return ipToString(r.Start) + "-" + ipToString(r.End)
 }
 
 type IpWrapper struct {
@@ -77,7 +77,7 @@ func (r IpWrapper) ToIpNets() []*net.IPNet {
 	}
 }
 func (r IpWrapper) ToRange() *Range {
-	return &Range{start: r.IP, end: r.IP}
+	return &Range{Start: r.IP, End: r.IP}
 }
 func (r IpWrapper) String() string {
 	return ipToString(r.IP)
@@ -98,7 +98,7 @@ func (r IpNetWrapper) ToIpNets() []*net.IPNet {
 }
 func (r IpNetWrapper) ToRange() *Range {
 	ipNet := r.IPNet
-	return &Range{start: ipNet.IP, end: lastIp(ipNet)}
+	return &Range{Start: ipNet.IP, End: lastIp(ipNet)}
 }
 func (r IpNetWrapper) String() string {
 	ip, mask := r.IP, r.Mask
@@ -162,6 +162,7 @@ func lastIp(ipNet *net.IPNet) net.IP {
 	return res
 }
 
+// 将最右边第一个不是 255 的的数 +1
 func addOne(ip net.IP) net.IP {
 	ipLen := len(ip)
 	res := make(net.IP, ipLen)
@@ -175,6 +176,7 @@ func addOne(ip net.IP) net.IP {
 	return res
 }
 
+// return a ^ b
 func xor(a, b net.IP) net.IP {
 	ipLen := len(a)
 	assert(ipLen == len(b), "a=%v, b=%v", a, b)
@@ -210,7 +212,7 @@ func (s Ranges) Swap(i, j int) {
 	s[i], s[j] = s[j], s[i]
 }
 func (s Ranges) Less(i, j int) bool {
-	return lessThan(s[i].start, s[j].start)
+	return lessThan(s[i].Start, s[j].Start)
 }
 
 func sortAndMerge(wrappers []IRange) []IRange {
@@ -226,22 +228,22 @@ func sortAndMerge(wrappers []IRange) []IRange {
 	res := make([]IRange, 0, len(ranges))
 	now := ranges[0]
 	familyLength := now.familyLength()
-	start, end := now.start, now.end
+	start, end := now.Start, now.End
 	for i, count := 1, len(ranges); i < count; i++ {
 		now := ranges[i]
 		if fl := now.familyLength(); fl != familyLength {
 			res = append(res, &Range{start, end})
 			familyLength = fl
-			start, end = now.start, now.end
+			start, end = now.Start, now.End
 			continue
 		}
-		if allFF(end) || !lessThan(addOne(end), now.start) {
-			if lessThan(end, now.end) {
-				end = now.end
+		if allFF(end) || !lessThan(addOne(end), now.Start) {
+			if lessThan(end, now.End) {
+				end = now.End
 			}
 		} else {
 			res = append(res, &Range{start, end})
-			start, end = now.start, now.end
+			start, end = now.Start, now.End
 		}
 	}
 	return append(res, &Range{start, end})

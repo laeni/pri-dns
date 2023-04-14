@@ -136,8 +136,14 @@ func newApp(store db.Store) *iris.Application {
 					return
 				}
 
-				// 排序、去重、转为String
-				hosts = ipNetToString(cidrMerger.MergeIPNet(hostIPNets, false))
+				iRange := cidrMerger.IpNetToIRange(hostIPNets)
+				// 排序、去重
+				iRange = cidrMerger.MergeIRange(iRange, false)
+				// 排除指定网段 TODO 查库
+				iRange = excludeIpRange(iRange, cidrMerger.IpNetToIRange(priNets))
+
+				// 转为网段形式字符串
+				hosts = ipNetToString(cidrMerger.IRangeToIpNet(iRange))
 			}
 
 			ctx.WriteString(strings.Join(hosts, ","))
@@ -150,10 +156,22 @@ func newApp(store db.Store) *iris.Application {
 }
 
 // 私有地址
-var priNets = []net.IPNet{
+var priNets = []*net.IPNet{
 	{IP: net.ParseIP("10.0.0.0"), Mask: net.CIDRMask(8, 8*net.IPv4len)},
 	{IP: net.ParseIP("172.16.0.0"), Mask: net.CIDRMask(12, 8*net.IPv4len)},
 	{IP: net.ParseIP("192.168.0.0"), Mask: net.CIDRMask(16, 8*net.IPv4len)},
+}
+
+// 从网段中排除指定网段，比如排除私有地址或者指定地址
+func excludeIpRange(irs []cidrMerger.IRange, exs []cidrMerger.IRange) []cidrMerger.IRange {
+	for _, ir := range irs {
+		irRange := ir.ToRange()
+		for _, ex := range exs {
+			exRange := ex.ToRange()
+			if irRange.Start > exRange.Start && irRange.Start < exRange.End {
+			}
+		}
+	}
 }
 
 // mergeIpV1 V1版本的合并规则，明确通过指定将达到指定数量的原始IP进行合并，
@@ -281,7 +299,7 @@ HostFor:
 		}
 	}
 	ipNets = ipNets[:j]
-	ipNets = cidrMerger.MergeIPNet(ipNets, false)
+	ipNets = cidrMerger.IRangeToIpNet(cidrMerger.MergeIRange(cidrMerger.IpNetToIRange(ipNets), false))
 
 	// 将原始ip根据目标网络地址进行分组
 	ipMap := make(map[string][]*net.IPNet, len(ipNets))

@@ -16,6 +16,28 @@
 
 ```Corefile
 pri-dns {
+    # 后台端口及监听地址，如果不填则不会启动后台服务，该值不支持动态修改。
+    # 示例: :8080 or 127.0.0.1:8080
+    serverPort    :80
+
+    # 存储介质配置，目前只支持MySQL，所以为必填项
+    mysql {
+        dataSourceName root:123456@tcp(127.0.0.1:3306)/db_pridns?parseTime=true&loc=Asia%2FShanghai
+    }
+
+    # 当需要使用 DNS of TLS 时，可以配置 TLS 相关证书所需。如果需要访问多个 TLS 服务时可以重复定义多个
+    # 这里假设有DNS服务器 1.2.3.4 使用 tls 协议 在 853 端口提供服务（tls://1.2.3.4:853），该服务提供的证书是颁发给 dns.example.com 域名的，且要求客户端也提供认证证书
+    tls {
+        # CERT|KEY|CA 证书密钥配置。配置和语义与 forward 插件相同
+        cert /cert/client/dns.crt /cert/client/dns.key /cert/root_ca.crt
+        # 由于不能配置成 tls://dns.example.com:853 格式，而只能使用 IP，所以要单独指定信任的域名
+        servername dns.example.com
+        # 表示上面的 cert 和 servername 配置适用于地址为 1.2.3.4 的服务
+        hosts 1.2.3.4
+    }
+    health_check 10s # 所有上游的健康检查配置。配置和语义与 forward 插件相同
+}
+pri-dns {
     dataSourceName DATA_SOURCE_NAME
 }
 ```
