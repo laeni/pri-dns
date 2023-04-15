@@ -178,7 +178,7 @@ func excludeIpRange(irs []*cidrMerger.Range, exs []*cidrMerger.Range) []*cidrMer
 				} else {
 					// ` |irRange.Start         |irRange.End
 					// `    |exRange.Start  |exRange.End
-					irsTmp = append(irsTmp, &cidrMerger.Range{Start: irRange.Start, End: ipMinusOne(exRange.Start)}, &cidrMerger.Range{Start: ipPlusOne(exRange.Start), End: irRange.End})
+					irsTmp = append(irsTmp, &cidrMerger.Range{Start: irRange.Start, End: ipMinusOne(exRange.Start)}, &cidrMerger.Range{Start: ipPlusOne(exRange.End), End: irRange.End})
 				}
 			} else {
 				if isIpBefore(exRange.End, irRange.Start) {

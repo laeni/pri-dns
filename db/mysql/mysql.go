@@ -206,7 +206,7 @@ func (s *StoreMysql) FindHistoryByHost(ctx context.Context, host string) ([]stri
 	if err != nil {
 		panic(err)
 	}
-	husExStr := make([]string, len(historyExes))
+	husExStr := make([]string, 0, len(historyExes))
 	{
 		// 去除否定用途的记录
 		denied := make(map[string]struct{}, 0)
