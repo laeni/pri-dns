@@ -1322,6 +1322,44 @@ func (q *Queries) FindHistoryByName(ctx context.Context, name string) (History, 
 	return i, err
 }
 
+const findHistoryExByName = `-- name: FindHistoryExByName :many
+select id, client_host, ip_net, deny_global, label, create_time, update_time
+from history_ex
+where (client_host = '' or client_host = ?)
+`
+
+// FindHistoryExByName 查询历史排除网段
+func (q *Queries) FindHistoryExByName(ctx context.Context, clientHost string) ([]HistoryEx, error) {
+	rows, err := q.db.QueryContext(ctx, findHistoryExByName, clientHost)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []HistoryEx
+	for rows.Next() {
+		var i HistoryEx
+		if err := rows.Scan(
+			&i.ID,
+			&i.ClientHost,
+			&i.IpNet,
+			&i.DenyGlobal,
+			&i.Label,
+			&i.CreateTime,
+			&i.UpdateTime,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const insertHistory = `-- name: InsertHistory :exec
 insert into history(name, history)
 VALUES (?, ?)

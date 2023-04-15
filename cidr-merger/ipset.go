@@ -19,7 +19,6 @@ func ipToString(ip net.IP) string {
 }
 
 type IRange interface {
-	ToIp() net.IP // return nil if it can't be represented as a single ip
 	ToIpNets() []*net.IPNet
 	ToRange() *Range
 	String() string
@@ -30,30 +29,34 @@ type Range struct {
 	End   net.IP
 }
 
-func (r *Range) familyLength() int {
-	return len(r.Start)
-}
-func (r *Range) ToIp() net.IP {
-	if bytes.Equal(r.Start, r.End) {
-		return r.Start
-	}
-	return nil
-}
 func (r *Range) ToIpNets() []*net.IPNet {
-	s, end := r.Start, r.End
-	ipBits := len(s) * 8
-	assert(ipBits == len(end)*8, "len(r.Start) == len(r.End)")
+	start, end := r.Start, r.End
+	ipBits := len(start) * 8
+	if ipBits != len(end)*8 {
+		if len(start) == net.IPv6len {
+			start = start.To4()
+			if start == nil {
+				assert(false, "len(r.Start) == len(r.End)")
+			}
+		}
+		if len(end) == net.IPv6len {
+			end = end.To4()
+			if end == nil {
+				assert(false, "len(r.Start) == len(r.End)")
+			}
+		}
+	}
 	var result []*net.IPNet
 	for {
-		assert(bytes.Compare(s, end) <= 0, "s <= End")
-		cidr := max(prefixLength(xor(addOne(end), s)), ipBits-trailingZeros(s))
-		ipNet := &net.IPNet{IP: s, Mask: net.CIDRMask(cidr, ipBits)}
+		assert(bytes.Compare(start, end) <= 0, "start <= End")
+		cidr := max(prefixLength(xor(addOne(end), start)), ipBits-trailingZeros(start))
+		ipNet := &net.IPNet{IP: start, Mask: net.CIDRMask(cidr, ipBits)}
 		result = append(result, ipNet)
 		tmp := lastIp(ipNet)
 		if !lessThan(tmp, end) {
 			return result
 		}
-		s = addOne(tmp)
+		start = addOne(tmp)
 	}
 }
 func (r *Range) ToRange() *Range {
@@ -67,9 +70,6 @@ type IpWrapper struct {
 	net.IP
 }
 
-func (r IpWrapper) ToIp() net.IP {
-	return r.IP
-}
 func (r IpWrapper) ToIpNets() []*net.IPNet {
 	ipBits := len(r.IP) * 8
 	return []*net.IPNet{
@@ -87,12 +87,6 @@ type IpNetWrapper struct {
 	*net.IPNet
 }
 
-func (r IpNetWrapper) ToIp() net.IP {
-	if allFF(r.IPNet.Mask) {
-		return r.IPNet.IP
-	}
-	return nil
-}
 func (r IpNetWrapper) ToIpNets() []*net.IPNet {
 	return []*net.IPNet{r.IPNet}
 }
@@ -151,10 +145,23 @@ func trailingZeros(ip net.IP) int {
 	return ipLen * 8
 }
 
+// 获取网段的最后一个Ip
 func lastIp(ipNet *net.IPNet) net.IP {
 	ip, mask := ipNet.IP, ipNet.Mask
+	maskLen := len(mask)
 	ipLen := len(ip)
-	assert(len(mask) == ipLen, "unexpected IPNet %v", ipNet)
+	if ipLen != maskLen {
+		ip = ip.To4()
+		if ip != nil {
+			ipLen = len(ip)
+			if maskLen != ipLen {
+				mask = mask[12:16]
+				maskLen = len(mask)
+			}
+		} else {
+			assert(false, "unexpected IPNet %v", ipNet)
+		}
+	}
 	res := make(net.IP, ipLen)
 	for i := 0; i < ipLen; i++ {
 		res[i] = ip[i] | ^mask[i]
@@ -187,24 +194,6 @@ func xor(a, b net.IP) net.IP {
 	return res
 }
 
-func convertBatch(wrappers []IRange, typeRange bool) []IRange {
-	result := make([]IRange, 0, len(wrappers))
-	if typeRange {
-		for _, r := range wrappers {
-			result = append(result, r.ToRange())
-		}
-	} else {
-		for _, r := range wrappers {
-			for _, ipNet := range r.ToIpNets() {
-				// can't use range iterator, for operator address of is taken
-				// it seems a trick of golang here
-				result = append(result, IpNetWrapper{ipNet})
-			}
-		}
-	}
-	return result
-}
-
 type Ranges []*Range
 
 func (s Ranges) Len() int { return len(s) }
@@ -215,35 +204,32 @@ func (s Ranges) Less(i, j int) bool {
 	return lessThan(s[i].Start, s[j].Start)
 }
 
-func sortAndMerge(wrappers []IRange) []IRange {
-	if len(wrappers) < 2 {
-		return wrappers
-	}
-	ranges := make([]*Range, 0, len(wrappers))
-	for _, e := range wrappers {
-		ranges = append(ranges, e.ToRange())
+// SortAndMerge 排序并合并
+func SortAndMerge(ranges []*Range) []*Range {
+	if len(ranges) < 2 {
+		return ranges
 	}
 	sort.Sort(Ranges(ranges))
 
-	res := make([]IRange, 0, len(ranges))
+	res := make([]*Range, 0, len(ranges))
 	now := ranges[0]
-	familyLength := now.familyLength()
+	familyLength := len(now.Start)
 	start, end := now.Start, now.End
 	for i, count := 1, len(ranges); i < count; i++ {
-		now := ranges[i]
-		if fl := now.familyLength(); fl != familyLength {
+		item := ranges[i]
+		if fl := len(item.Start); fl != familyLength {
 			res = append(res, &Range{start, end})
 			familyLength = fl
-			start, end = now.Start, now.End
+			start, end = item.Start, item.End
 			continue
 		}
-		if allFF(end) || !lessThan(addOne(end), now.Start) {
-			if lessThan(end, now.End) {
-				end = now.End
+		if allFF(end) || !lessThan(addOne(end), item.Start) {
+			if lessThan(end, item.End) {
+				end = item.End
 			}
 		} else {
 			res = append(res, &Range{start, end})
-			start, end = now.Start, now.End
+			start, end = item.Start, item.End
 		}
 	}
 	return append(res, &Range{start, end})

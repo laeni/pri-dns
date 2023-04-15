@@ -207,6 +207,12 @@ update history
 set history = ?
 where name = ?;
 
+-- FindHistoryExByName 查询历史排除网段
+-- name: FindHistoryExByName :many
+select *
+from history_ex
+where (client_host = '' or client_host = ?);
+
 -- FindForwardByHost 查询客户端的转发域名
 -- name: FindForwardByHost :many
 select client_host, name, deny_global

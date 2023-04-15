@@ -125,7 +125,7 @@ func (s *StoreMysql) SavaHistory(ctx context.Context, name string, newHis []stri
 	// 合并新老历史
 	ipHis := append(newHis, oldHis...)
 	// 从语义上再次进行合并
-	ipHis = cidr_merger.MergeIp(ipHis, false)
+	ipHis = mergeIp(ipHis)
 
 	sava := len(oldHis) != len(ipHis)
 	if !sava {
@@ -156,15 +156,16 @@ func (s *StoreMysql) SavaHistory(ctx context.Context, name string, newHis []stri
 	return tx.Commit()
 }
 
-func (s *StoreMysql) FindHistoryByHost(ctx context.Context, host string) []string {
+func (s *StoreMysql) FindHistoryByHost(ctx context.Context, host string) ([]string, []string) {
 	tx, err := s.db.Begin()
 	if err != nil {
 		panic(err)
 	}
 	defer tx.Rollback()
+	withTx := s.queries.WithTx(tx)
 
 	// 查询全局和客户端对应的转发域名
-	forwards, err := s.queries.WithTx(tx).FindForwardByHost(ctx, host)
+	forwards, err := withTx.FindForwardByHost(ctx, host)
 	if err != nil {
 		panic(err)
 	}
@@ -197,16 +198,40 @@ func (s *StoreMysql) FindHistoryByHost(ctx context.Context, host string) []strin
 	if err != nil {
 		panic(err)
 	}
-
 	// 简单去重
 	his = util.SliceDeduplication(his)
 
-	// 根据IP范围语义进行合并
-	his = cidr_merger.MergeIp(his, false)
+	// 查询需要排除的网段，比如内网网段
+	historyExes, err := withTx.FindHistoryExByName(ctx, host)
+	if err != nil {
+		panic(err)
+	}
+	husExStr := make([]string, len(historyExes))
+	{
+		// 去除否定用途的记录
+		denied := make(map[string]struct{}, 0)
+		for _, ex := range historyExes {
+			if ex.ClientHost != "" && ex.DenyGlobal == "Y" {
+				denied[ex.IpNet] = struct{}{}
+			}
+		}
+		for _, ex := range historyExes {
+			if ex.ClientHost == "" {
+				if _, ok := denied[ex.IpNet]; ok {
+					continue
+				}
+			}
+			if ex.DenyGlobal == "Y" {
+				continue
+			}
+			husExStr = append(husExStr, ex.IpNet)
+		}
+	}
 
 	tx.Commit()
 
-	return his
+	// 根据IP范围语义进行合并
+	return mergeIp(his), husExStr
 }
 
 // 查询域名对应的解析IP历史
@@ -250,4 +275,11 @@ func findHistoryHostsByNames(ctx context.Context, tx *sql.Tx, forwards []FindFor
 		return nil, err
 	}
 	return items, nil
+}
+
+// mergeIp 对ip进行合并
+func mergeIp(in []string) []string {
+	result := cidr_merger.IpNetToRange(cidr_merger.StrToIpNet(in))
+	result = cidr_merger.SortAndMerge(result)
+	return cidr_merger.IpNetToString(cidr_merger.IpRangeToIpNet(result))
 }

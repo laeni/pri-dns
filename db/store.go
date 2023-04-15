@@ -16,7 +16,8 @@ type Store interface {
 	SavaHistory(ctx context.Context, name string, newHis []string) error
 
 	// FindHistoryByHost 查询客户端对应的解析历史，当 host 为 “” 时表示查询全局配置.
-	FindHistoryByHost(ctx context.Context, host string) []string
+	// 其中返回值的二个值表示需要排除的网段
+	FindHistoryByHost(ctx context.Context, host string) ([]string, []string)
 }
 
 type RecordFilter interface {

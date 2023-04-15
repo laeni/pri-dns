@@ -2,6 +2,7 @@ package pri_dns
 
 import (
 	"github.com/coredns/caddy"
+	"github.com/laeni/pri-dns/types"
 	"reflect"
 	"testing"
 )
@@ -10,7 +11,7 @@ func TestParse(t *testing.T) {
 	tests := []struct {
 		name           string
 		inputFileRules string
-		want           *Config
+		want           *types.Config
 		wantErr        bool
 	}{
 		{
@@ -21,10 +22,10 @@ func TestParse(t *testing.T) {
 								dataSourceName xx
 							}
 						}`,
-			&Config{
-				adminPassword: "admin",
-				storeType:     storeTypeMySQL,
-				mySQL:         MySQLConfig{dataSourceName: "xx"},
+			&types.Config{
+				AdminPassword: "admin",
+				StoreType:     storeTypeMySQL,
+				MySQL:         types.MySQLConfig{DataSourceName: "xx"},
 			},
 			false,
 		},
