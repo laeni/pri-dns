@@ -11,20 +11,20 @@ import (
 )
 
 const findDomainByHostAndNameLike1 = `-- name: FindDomainByHostAndNameLike1 :many
-select id, host, name, value, ttl, dns_type, deny_global, status, create_time, update_time
+select id, client_host, name, value, ttl, dns_type, deny_global, status, create_time, update_time
 from domain
-where host = ?
+where client_host = ?
   and name = ?
 `
 
 type FindDomainByHostAndNameLike1Params struct {
-	Host string
-	Name string
+	ClientHost string
+	Name       string
 }
 
 // FindDomainByHostAndNameLike1 查询客户端专属的解析
 func (q *Queries) FindDomainByHostAndNameLike1(ctx context.Context, arg FindDomainByHostAndNameLike1Params) ([]Domain, error) {
-	rows, err := q.db.QueryContext(ctx, findDomainByHostAndNameLike1, arg.Host, arg.Name)
+	rows, err := q.db.QueryContext(ctx, findDomainByHostAndNameLike1, arg.ClientHost, arg.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -34,7 +34,7 @@ func (q *Queries) FindDomainByHostAndNameLike1(ctx context.Context, arg FindDoma
 		var i Domain
 		if err := rows.Scan(
 			&i.ID,
-			&i.Host,
+			&i.ClientHost,
 			&i.Name,
 			&i.Value,
 			&i.Ttl,
@@ -58,21 +58,21 @@ func (q *Queries) FindDomainByHostAndNameLike1(ctx context.Context, arg FindDoma
 }
 
 const findDomainByHostAndNameLike2 = `-- name: FindDomainByHostAndNameLike2 :many
-select id, host, name, value, ttl, dns_type, deny_global, status, create_time, update_time
+select id, client_host, name, value, ttl, dns_type, deny_global, status, create_time, update_time
 from domain
-where host = ?
+where client_host = ?
   and (name = ? or name = ?)
 `
 
 type FindDomainByHostAndNameLike2Params struct {
-	Host   string
-	Name   string
-	Name_2 string
+	ClientHost string
+	Name       string
+	Name_2     string
 }
 
 // FindDomainByHostAndNameLike2 查询客户端专属的解析
 func (q *Queries) FindDomainByHostAndNameLike2(ctx context.Context, arg FindDomainByHostAndNameLike2Params) ([]Domain, error) {
-	rows, err := q.db.QueryContext(ctx, findDomainByHostAndNameLike2, arg.Host, arg.Name, arg.Name_2)
+	rows, err := q.db.QueryContext(ctx, findDomainByHostAndNameLike2, arg.ClientHost, arg.Name, arg.Name_2)
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +82,7 @@ func (q *Queries) FindDomainByHostAndNameLike2(ctx context.Context, arg FindDoma
 		var i Domain
 		if err := rows.Scan(
 			&i.ID,
-			&i.Host,
+			&i.ClientHost,
 			&i.Name,
 			&i.Value,
 			&i.Ttl,
@@ -106,23 +106,23 @@ func (q *Queries) FindDomainByHostAndNameLike2(ctx context.Context, arg FindDoma
 }
 
 const findDomainByHostAndNameLike3 = `-- name: FindDomainByHostAndNameLike3 :many
-select id, host, name, value, ttl, dns_type, deny_global, status, create_time, update_time
+select id, client_host, name, value, ttl, dns_type, deny_global, status, create_time, update_time
 from domain
-where host = ?
+where client_host = ?
   and (name = ? or name = ? or name = ?)
 `
 
 type FindDomainByHostAndNameLike3Params struct {
-	Host   string
-	Name   string
-	Name_2 string
-	Name_3 string
+	ClientHost string
+	Name       string
+	Name_2     string
+	Name_3     string
 }
 
 // FindDomainByHostAndNameLike3 查询客户端专属的解析
 func (q *Queries) FindDomainByHostAndNameLike3(ctx context.Context, arg FindDomainByHostAndNameLike3Params) ([]Domain, error) {
 	rows, err := q.db.QueryContext(ctx, findDomainByHostAndNameLike3,
-		arg.Host,
+		arg.ClientHost,
 		arg.Name,
 		arg.Name_2,
 		arg.Name_3,
@@ -136,7 +136,7 @@ func (q *Queries) FindDomainByHostAndNameLike3(ctx context.Context, arg FindDoma
 		var i Domain
 		if err := rows.Scan(
 			&i.ID,
-			&i.Host,
+			&i.ClientHost,
 			&i.Name,
 			&i.Value,
 			&i.Ttl,
@@ -160,24 +160,24 @@ func (q *Queries) FindDomainByHostAndNameLike3(ctx context.Context, arg FindDoma
 }
 
 const findDomainByHostAndNameLike4 = `-- name: FindDomainByHostAndNameLike4 :many
-select id, host, name, value, ttl, dns_type, deny_global, status, create_time, update_time
+select id, client_host, name, value, ttl, dns_type, deny_global, status, create_time, update_time
 from domain
-where host = ?
+where client_host = ?
   and (name = ? or name = ? or name = ? or name = ?)
 `
 
 type FindDomainByHostAndNameLike4Params struct {
-	Host   string
-	Name   string
-	Name_2 string
-	Name_3 string
-	Name_4 string
+	ClientHost string
+	Name       string
+	Name_2     string
+	Name_3     string
+	Name_4     string
 }
 
 // FindDomainByHostAndNameLike4 查询客户端专属的解析
 func (q *Queries) FindDomainByHostAndNameLike4(ctx context.Context, arg FindDomainByHostAndNameLike4Params) ([]Domain, error) {
 	rows, err := q.db.QueryContext(ctx, findDomainByHostAndNameLike4,
-		arg.Host,
+		arg.ClientHost,
 		arg.Name,
 		arg.Name_2,
 		arg.Name_3,
@@ -192,7 +192,7 @@ func (q *Queries) FindDomainByHostAndNameLike4(ctx context.Context, arg FindDoma
 		var i Domain
 		if err := rows.Scan(
 			&i.ID,
-			&i.Host,
+			&i.ClientHost,
 			&i.Name,
 			&i.Value,
 			&i.Ttl,
@@ -216,25 +216,25 @@ func (q *Queries) FindDomainByHostAndNameLike4(ctx context.Context, arg FindDoma
 }
 
 const findDomainByHostAndNameLike5 = `-- name: FindDomainByHostAndNameLike5 :many
-select id, host, name, value, ttl, dns_type, deny_global, status, create_time, update_time
+select id, client_host, name, value, ttl, dns_type, deny_global, status, create_time, update_time
 from domain
-where host = ?
+where client_host = ?
   and (name = ? or name = ? or name = ? or name = ? or name = ?)
 `
 
 type FindDomainByHostAndNameLike5Params struct {
-	Host   string
-	Name   string
-	Name_2 string
-	Name_3 string
-	Name_4 string
-	Name_5 string
+	ClientHost string
+	Name       string
+	Name_2     string
+	Name_3     string
+	Name_4     string
+	Name_5     string
 }
 
 // FindDomainByHostAndNameLike5 查询客户端专属的解析
 func (q *Queries) FindDomainByHostAndNameLike5(ctx context.Context, arg FindDomainByHostAndNameLike5Params) ([]Domain, error) {
 	rows, err := q.db.QueryContext(ctx, findDomainByHostAndNameLike5,
-		arg.Host,
+		arg.ClientHost,
 		arg.Name,
 		arg.Name_2,
 		arg.Name_3,
@@ -250,7 +250,7 @@ func (q *Queries) FindDomainByHostAndNameLike5(ctx context.Context, arg FindDoma
 		var i Domain
 		if err := rows.Scan(
 			&i.ID,
-			&i.Host,
+			&i.ClientHost,
 			&i.Name,
 			&i.Value,
 			&i.Ttl,
@@ -274,26 +274,26 @@ func (q *Queries) FindDomainByHostAndNameLike5(ctx context.Context, arg FindDoma
 }
 
 const findDomainByHostAndNameLike6 = `-- name: FindDomainByHostAndNameLike6 :many
-select id, host, name, value, ttl, dns_type, deny_global, status, create_time, update_time
+select id, client_host, name, value, ttl, dns_type, deny_global, status, create_time, update_time
 from domain
-where host = ?
+where client_host = ?
   and (name = ? or name = ? or name = ? or name = ? or name = ? or name = ?)
 `
 
 type FindDomainByHostAndNameLike6Params struct {
-	Host   string
-	Name   string
-	Name_2 string
-	Name_3 string
-	Name_4 string
-	Name_5 string
-	Name_6 string
+	ClientHost string
+	Name       string
+	Name_2     string
+	Name_3     string
+	Name_4     string
+	Name_5     string
+	Name_6     string
 }
 
 // FindDomainByHostAndNameLike6 查询客户端专属的解析
 func (q *Queries) FindDomainByHostAndNameLike6(ctx context.Context, arg FindDomainByHostAndNameLike6Params) ([]Domain, error) {
 	rows, err := q.db.QueryContext(ctx, findDomainByHostAndNameLike6,
-		arg.Host,
+		arg.ClientHost,
 		arg.Name,
 		arg.Name_2,
 		arg.Name_3,
@@ -310,7 +310,7 @@ func (q *Queries) FindDomainByHostAndNameLike6(ctx context.Context, arg FindDoma
 		var i Domain
 		if err := rows.Scan(
 			&i.ID,
-			&i.Host,
+			&i.ClientHost,
 			&i.Name,
 			&i.Value,
 			&i.Ttl,
@@ -334,11 +334,11 @@ func (q *Queries) FindDomainByHostAndNameLike6(ctx context.Context, arg FindDoma
 }
 
 const findDomainGlobalByName1 = `-- name: FindDomainGlobalByName1 :many
-select id, host, name, value, ttl, dns_type, deny_global, status, create_time, update_time
+select id, client_host, name, value, ttl, dns_type, deny_global, status, create_time, update_time
 from domain
 where name = ?
-  and (host = ''
-    or host is null)
+  and (client_host = ''
+    or client_host is null)
   and status = 'ENABLE'
 `
 
@@ -354,7 +354,7 @@ func (q *Queries) FindDomainGlobalByName1(ctx context.Context, name string) ([]D
 		var i Domain
 		if err := rows.Scan(
 			&i.ID,
-			&i.Host,
+			&i.ClientHost,
 			&i.Name,
 			&i.Value,
 			&i.Ttl,
@@ -378,11 +378,11 @@ func (q *Queries) FindDomainGlobalByName1(ctx context.Context, name string) ([]D
 }
 
 const findDomainGlobalByName2 = `-- name: FindDomainGlobalByName2 :many
-select id, host, name, value, ttl, dns_type, deny_global, status, create_time, update_time
+select id, client_host, name, value, ttl, dns_type, deny_global, status, create_time, update_time
 from domain
 where (name = ? or name = ?)
-  and (host = ''
-    or host is null)
+  and (client_host = ''
+    or client_host is null)
   and status = 'ENABLE'
 `
 
@@ -403,7 +403,7 @@ func (q *Queries) FindDomainGlobalByName2(ctx context.Context, arg FindDomainGlo
 		var i Domain
 		if err := rows.Scan(
 			&i.ID,
-			&i.Host,
+			&i.ClientHost,
 			&i.Name,
 			&i.Value,
 			&i.Ttl,
@@ -427,11 +427,11 @@ func (q *Queries) FindDomainGlobalByName2(ctx context.Context, arg FindDomainGlo
 }
 
 const findDomainGlobalByName3 = `-- name: FindDomainGlobalByName3 :many
-select id, host, name, value, ttl, dns_type, deny_global, status, create_time, update_time
+select id, client_host, name, value, ttl, dns_type, deny_global, status, create_time, update_time
 from domain
 where (name = ? or name = ? or name = ?)
-  and (host = ''
-    or host is null)
+  and (client_host = ''
+    or client_host is null)
   and status = 'ENABLE'
 `
 
@@ -453,7 +453,7 @@ func (q *Queries) FindDomainGlobalByName3(ctx context.Context, arg FindDomainGlo
 		var i Domain
 		if err := rows.Scan(
 			&i.ID,
-			&i.Host,
+			&i.ClientHost,
 			&i.Name,
 			&i.Value,
 			&i.Ttl,
@@ -477,11 +477,11 @@ func (q *Queries) FindDomainGlobalByName3(ctx context.Context, arg FindDomainGlo
 }
 
 const findDomainGlobalByName4 = `-- name: FindDomainGlobalByName4 :many
-select id, host, name, value, ttl, dns_type, deny_global, status, create_time, update_time
+select id, client_host, name, value, ttl, dns_type, deny_global, status, create_time, update_time
 from domain
 where (name = ? or name = ? or name = ? or name = ?)
-  and (host = ''
-    or host is null)
+  and (client_host = ''
+    or client_host is null)
   and status = 'ENABLE'
 `
 
@@ -509,7 +509,7 @@ func (q *Queries) FindDomainGlobalByName4(ctx context.Context, arg FindDomainGlo
 		var i Domain
 		if err := rows.Scan(
 			&i.ID,
-			&i.Host,
+			&i.ClientHost,
 			&i.Name,
 			&i.Value,
 			&i.Ttl,
@@ -533,11 +533,11 @@ func (q *Queries) FindDomainGlobalByName4(ctx context.Context, arg FindDomainGlo
 }
 
 const findDomainGlobalByName5 = `-- name: FindDomainGlobalByName5 :many
-select id, host, name, value, ttl, dns_type, deny_global, status, create_time, update_time
+select id, client_host, name, value, ttl, dns_type, deny_global, status, create_time, update_time
 from domain
 where (name = ? or name = ? or name = ? or name = ? or name = ?)
-  and (host = ''
-    or host is null)
+  and (client_host = ''
+    or client_host is null)
   and status = 'ENABLE'
 `
 
@@ -567,7 +567,7 @@ func (q *Queries) FindDomainGlobalByName5(ctx context.Context, arg FindDomainGlo
 		var i Domain
 		if err := rows.Scan(
 			&i.ID,
-			&i.Host,
+			&i.ClientHost,
 			&i.Name,
 			&i.Value,
 			&i.Ttl,
@@ -591,11 +591,11 @@ func (q *Queries) FindDomainGlobalByName5(ctx context.Context, arg FindDomainGlo
 }
 
 const findDomainGlobalByName6 = `-- name: FindDomainGlobalByName6 :many
-select id, host, name, value, ttl, dns_type, deny_global, status, create_time, update_time
+select id, client_host, name, value, ttl, dns_type, deny_global, status, create_time, update_time
 from domain
 where (name = ? or name = ? or name = ? or name = ? or name = ? or name = ?)
-  and (host = ''
-    or host is null)
+  and (client_host = ''
+    or client_host is null)
   and status = 'ENABLE'
 `
 
@@ -627,7 +627,7 @@ func (q *Queries) FindDomainGlobalByName6(ctx context.Context, arg FindDomainGlo
 		var i Domain
 		if err := rows.Scan(
 			&i.ID,
-			&i.Host,
+			&i.ClientHost,
 			&i.Name,
 			&i.Value,
 			&i.Ttl,
@@ -651,20 +651,20 @@ func (q *Queries) FindDomainGlobalByName6(ctx context.Context, arg FindDomainGlo
 }
 
 const findForwardByHost = `-- name: FindForwardByHost :many
-select host, name, deny_global
+select client_host, name, deny_global
 from forward
-where status = 'ENABLE' and (host = '' or host = ?)
+where status = 'ENABLE' and (client_host = '' or client_host = ?)
 `
 
 type FindForwardByHostRow struct {
-	Host       string
+	ClientHost string
 	Name       string
 	DenyGlobal string
 }
 
 // FindForwardByHost 查询客户端的转发域名
-func (q *Queries) FindForwardByHost(ctx context.Context, host string) ([]FindForwardByHostRow, error) {
-	rows, err := q.db.QueryContext(ctx, findForwardByHost, host)
+func (q *Queries) FindForwardByHost(ctx context.Context, clientHost string) ([]FindForwardByHostRow, error) {
+	rows, err := q.db.QueryContext(ctx, findForwardByHost, clientHost)
 	if err != nil {
 		return nil, err
 	}
@@ -672,7 +672,7 @@ func (q *Queries) FindForwardByHost(ctx context.Context, host string) ([]FindFor
 	var items []FindForwardByHostRow
 	for rows.Next() {
 		var i FindForwardByHostRow
-		if err := rows.Scan(&i.Host, &i.Name, &i.DenyGlobal); err != nil {
+		if err := rows.Scan(&i.ClientHost, &i.Name, &i.DenyGlobal); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -687,20 +687,20 @@ func (q *Queries) FindForwardByHost(ctx context.Context, host string) ([]FindFor
 }
 
 const findForwardByHostAndNameLike1 = `-- name: FindForwardByHostAndNameLike1 :many
-select id, host, name, dns_svr, deny_global, status, create_time, update_time
+select id, client_host, name, dns_svr, deny_global, status, create_time, update_time
 from forward
-where host = ?
+where client_host = ?
   and name = ?
 `
 
 type FindForwardByHostAndNameLike1Params struct {
-	Host string
-	Name string
+	ClientHost string
+	Name       string
 }
 
 // FindForwardByHostAndNameLike1 查询客户端专属的转发
 func (q *Queries) FindForwardByHostAndNameLike1(ctx context.Context, arg FindForwardByHostAndNameLike1Params) ([]Forward, error) {
-	rows, err := q.db.QueryContext(ctx, findForwardByHostAndNameLike1, arg.Host, arg.Name)
+	rows, err := q.db.QueryContext(ctx, findForwardByHostAndNameLike1, arg.ClientHost, arg.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -710,7 +710,7 @@ func (q *Queries) FindForwardByHostAndNameLike1(ctx context.Context, arg FindFor
 		var i Forward
 		if err := rows.Scan(
 			&i.ID,
-			&i.Host,
+			&i.ClientHost,
 			&i.Name,
 			&i.DnsSvr,
 			&i.DenyGlobal,
@@ -732,21 +732,21 @@ func (q *Queries) FindForwardByHostAndNameLike1(ctx context.Context, arg FindFor
 }
 
 const findForwardByHostAndNameLike2 = `-- name: FindForwardByHostAndNameLike2 :many
-select id, host, name, dns_svr, deny_global, status, create_time, update_time
+select id, client_host, name, dns_svr, deny_global, status, create_time, update_time
 from forward
-where host = ?
+where client_host = ?
   and (name = ? or name = ?)
 `
 
 type FindForwardByHostAndNameLike2Params struct {
-	Host   string
-	Name   string
-	Name_2 string
+	ClientHost string
+	Name       string
+	Name_2     string
 }
 
 // FindForwardByHostAndNameLike2 查询客户端专属的转发
 func (q *Queries) FindForwardByHostAndNameLike2(ctx context.Context, arg FindForwardByHostAndNameLike2Params) ([]Forward, error) {
-	rows, err := q.db.QueryContext(ctx, findForwardByHostAndNameLike2, arg.Host, arg.Name, arg.Name_2)
+	rows, err := q.db.QueryContext(ctx, findForwardByHostAndNameLike2, arg.ClientHost, arg.Name, arg.Name_2)
 	if err != nil {
 		return nil, err
 	}
@@ -756,7 +756,7 @@ func (q *Queries) FindForwardByHostAndNameLike2(ctx context.Context, arg FindFor
 		var i Forward
 		if err := rows.Scan(
 			&i.ID,
-			&i.Host,
+			&i.ClientHost,
 			&i.Name,
 			&i.DnsSvr,
 			&i.DenyGlobal,
@@ -778,23 +778,23 @@ func (q *Queries) FindForwardByHostAndNameLike2(ctx context.Context, arg FindFor
 }
 
 const findForwardByHostAndNameLike3 = `-- name: FindForwardByHostAndNameLike3 :many
-select id, host, name, dns_svr, deny_global, status, create_time, update_time
+select id, client_host, name, dns_svr, deny_global, status, create_time, update_time
 from forward
-where host = ?
+where client_host = ?
   and (name = ? or name = ? or name = ?)
 `
 
 type FindForwardByHostAndNameLike3Params struct {
-	Host   string
-	Name   string
-	Name_2 string
-	Name_3 string
+	ClientHost string
+	Name       string
+	Name_2     string
+	Name_3     string
 }
 
 // FindForwardByHostAndNameLike3 查询客户端专属的转发
 func (q *Queries) FindForwardByHostAndNameLike3(ctx context.Context, arg FindForwardByHostAndNameLike3Params) ([]Forward, error) {
 	rows, err := q.db.QueryContext(ctx, findForwardByHostAndNameLike3,
-		arg.Host,
+		arg.ClientHost,
 		arg.Name,
 		arg.Name_2,
 		arg.Name_3,
@@ -808,7 +808,7 @@ func (q *Queries) FindForwardByHostAndNameLike3(ctx context.Context, arg FindFor
 		var i Forward
 		if err := rows.Scan(
 			&i.ID,
-			&i.Host,
+			&i.ClientHost,
 			&i.Name,
 			&i.DnsSvr,
 			&i.DenyGlobal,
@@ -830,24 +830,24 @@ func (q *Queries) FindForwardByHostAndNameLike3(ctx context.Context, arg FindFor
 }
 
 const findForwardByHostAndNameLike4 = `-- name: FindForwardByHostAndNameLike4 :many
-select id, host, name, dns_svr, deny_global, status, create_time, update_time
+select id, client_host, name, dns_svr, deny_global, status, create_time, update_time
 from forward
-where host = ?
+where client_host = ?
   and (name = ? or name = ? or name = ? or name = ?)
 `
 
 type FindForwardByHostAndNameLike4Params struct {
-	Host   string
-	Name   string
-	Name_2 string
-	Name_3 string
-	Name_4 string
+	ClientHost string
+	Name       string
+	Name_2     string
+	Name_3     string
+	Name_4     string
 }
 
 // FindForwardByHostAndNameLike4 查询客户端专属的转发
 func (q *Queries) FindForwardByHostAndNameLike4(ctx context.Context, arg FindForwardByHostAndNameLike4Params) ([]Forward, error) {
 	rows, err := q.db.QueryContext(ctx, findForwardByHostAndNameLike4,
-		arg.Host,
+		arg.ClientHost,
 		arg.Name,
 		arg.Name_2,
 		arg.Name_3,
@@ -862,7 +862,7 @@ func (q *Queries) FindForwardByHostAndNameLike4(ctx context.Context, arg FindFor
 		var i Forward
 		if err := rows.Scan(
 			&i.ID,
-			&i.Host,
+			&i.ClientHost,
 			&i.Name,
 			&i.DnsSvr,
 			&i.DenyGlobal,
@@ -884,25 +884,25 @@ func (q *Queries) FindForwardByHostAndNameLike4(ctx context.Context, arg FindFor
 }
 
 const findForwardByHostAndNameLike5 = `-- name: FindForwardByHostAndNameLike5 :many
-select id, host, name, dns_svr, deny_global, status, create_time, update_time
+select id, client_host, name, dns_svr, deny_global, status, create_time, update_time
 from forward
-where host = ?
+where client_host = ?
   and (name = ? or name = ? or name = ? or name = ? or name = ?)
 `
 
 type FindForwardByHostAndNameLike5Params struct {
-	Host   string
-	Name   string
-	Name_2 string
-	Name_3 string
-	Name_4 string
-	Name_5 string
+	ClientHost string
+	Name       string
+	Name_2     string
+	Name_3     string
+	Name_4     string
+	Name_5     string
 }
 
 // FindForwardByHostAndNameLike5 查询客户端专属的转发
 func (q *Queries) FindForwardByHostAndNameLike5(ctx context.Context, arg FindForwardByHostAndNameLike5Params) ([]Forward, error) {
 	rows, err := q.db.QueryContext(ctx, findForwardByHostAndNameLike5,
-		arg.Host,
+		arg.ClientHost,
 		arg.Name,
 		arg.Name_2,
 		arg.Name_3,
@@ -918,7 +918,7 @@ func (q *Queries) FindForwardByHostAndNameLike5(ctx context.Context, arg FindFor
 		var i Forward
 		if err := rows.Scan(
 			&i.ID,
-			&i.Host,
+			&i.ClientHost,
 			&i.Name,
 			&i.DnsSvr,
 			&i.DenyGlobal,
@@ -940,26 +940,26 @@ func (q *Queries) FindForwardByHostAndNameLike5(ctx context.Context, arg FindFor
 }
 
 const findForwardByHostAndNameLike6 = `-- name: FindForwardByHostAndNameLike6 :many
-select id, host, name, dns_svr, deny_global, status, create_time, update_time
+select id, client_host, name, dns_svr, deny_global, status, create_time, update_time
 from forward
-where host = ?
+where client_host = ?
   and (name = ? or name = ? or name = ? or name = ? or name = ? or name = ?)
 `
 
 type FindForwardByHostAndNameLike6Params struct {
-	Host   string
-	Name   string
-	Name_2 string
-	Name_3 string
-	Name_4 string
-	Name_5 string
-	Name_6 string
+	ClientHost string
+	Name       string
+	Name_2     string
+	Name_3     string
+	Name_4     string
+	Name_5     string
+	Name_6     string
 }
 
 // FindForwardByHostAndNameLike6 查询客户端专属的转发
 func (q *Queries) FindForwardByHostAndNameLike6(ctx context.Context, arg FindForwardByHostAndNameLike6Params) ([]Forward, error) {
 	rows, err := q.db.QueryContext(ctx, findForwardByHostAndNameLike6,
-		arg.Host,
+		arg.ClientHost,
 		arg.Name,
 		arg.Name_2,
 		arg.Name_3,
@@ -976,7 +976,7 @@ func (q *Queries) FindForwardByHostAndNameLike6(ctx context.Context, arg FindFor
 		var i Forward
 		if err := rows.Scan(
 			&i.ID,
-			&i.Host,
+			&i.ClientHost,
 			&i.Name,
 			&i.DnsSvr,
 			&i.DenyGlobal,
@@ -998,11 +998,11 @@ func (q *Queries) FindForwardByHostAndNameLike6(ctx context.Context, arg FindFor
 }
 
 const findForwardGlobalByName1 = `-- name: FindForwardGlobalByName1 :many
-select id, host, name, dns_svr, deny_global, status, create_time, update_time
+select id, client_host, name, dns_svr, deny_global, status, create_time, update_time
 from forward
 where name = ?
-  and (host = ''
-    or host is null)
+  and (client_host = ''
+    or client_host is null)
   and status = 'ENABLE'
 `
 
@@ -1018,7 +1018,7 @@ func (q *Queries) FindForwardGlobalByName1(ctx context.Context, name string) ([]
 		var i Forward
 		if err := rows.Scan(
 			&i.ID,
-			&i.Host,
+			&i.ClientHost,
 			&i.Name,
 			&i.DnsSvr,
 			&i.DenyGlobal,
@@ -1040,11 +1040,11 @@ func (q *Queries) FindForwardGlobalByName1(ctx context.Context, name string) ([]
 }
 
 const findForwardGlobalByName2 = `-- name: FindForwardGlobalByName2 :many
-select id, host, name, dns_svr, deny_global, status, create_time, update_time
+select id, client_host, name, dns_svr, deny_global, status, create_time, update_time
 from forward
 where (name = ? or name = ?)
-  and (host = ''
-    or host is null)
+  and (client_host = ''
+    or client_host is null)
   and status = 'ENABLE'
 `
 
@@ -1065,7 +1065,7 @@ func (q *Queries) FindForwardGlobalByName2(ctx context.Context, arg FindForwardG
 		var i Forward
 		if err := rows.Scan(
 			&i.ID,
-			&i.Host,
+			&i.ClientHost,
 			&i.Name,
 			&i.DnsSvr,
 			&i.DenyGlobal,
@@ -1087,11 +1087,11 @@ func (q *Queries) FindForwardGlobalByName2(ctx context.Context, arg FindForwardG
 }
 
 const findForwardGlobalByName3 = `-- name: FindForwardGlobalByName3 :many
-select id, host, name, dns_svr, deny_global, status, create_time, update_time
+select id, client_host, name, dns_svr, deny_global, status, create_time, update_time
 from forward
 where (name = ? or name = ? or name = ?)
-  and (host = ''
-    or host is null)
+  and (client_host = ''
+    or client_host is null)
   and status = 'ENABLE'
 `
 
@@ -1113,7 +1113,7 @@ func (q *Queries) FindForwardGlobalByName3(ctx context.Context, arg FindForwardG
 		var i Forward
 		if err := rows.Scan(
 			&i.ID,
-			&i.Host,
+			&i.ClientHost,
 			&i.Name,
 			&i.DnsSvr,
 			&i.DenyGlobal,
@@ -1135,11 +1135,11 @@ func (q *Queries) FindForwardGlobalByName3(ctx context.Context, arg FindForwardG
 }
 
 const findForwardGlobalByName4 = `-- name: FindForwardGlobalByName4 :many
-select id, host, name, dns_svr, deny_global, status, create_time, update_time
+select id, client_host, name, dns_svr, deny_global, status, create_time, update_time
 from forward
 where (name = ? or name = ? or name = ? or name = ?)
-  and (host = ''
-    or host is null)
+  and (client_host = ''
+    or client_host is null)
   and status = 'ENABLE'
 `
 
@@ -1167,7 +1167,7 @@ func (q *Queries) FindForwardGlobalByName4(ctx context.Context, arg FindForwardG
 		var i Forward
 		if err := rows.Scan(
 			&i.ID,
-			&i.Host,
+			&i.ClientHost,
 			&i.Name,
 			&i.DnsSvr,
 			&i.DenyGlobal,
@@ -1189,11 +1189,11 @@ func (q *Queries) FindForwardGlobalByName4(ctx context.Context, arg FindForwardG
 }
 
 const findForwardGlobalByName5 = `-- name: FindForwardGlobalByName5 :many
-select id, host, name, dns_svr, deny_global, status, create_time, update_time
+select id, client_host, name, dns_svr, deny_global, status, create_time, update_time
 from forward
 where (name = ? or name = ? or name = ? or name = ? or name = ?)
-  and (host = ''
-    or host is null)
+  and (client_host = ''
+    or client_host is null)
   and status = 'ENABLE'
 `
 
@@ -1223,7 +1223,7 @@ func (q *Queries) FindForwardGlobalByName5(ctx context.Context, arg FindForwardG
 		var i Forward
 		if err := rows.Scan(
 			&i.ID,
-			&i.Host,
+			&i.ClientHost,
 			&i.Name,
 			&i.DnsSvr,
 			&i.DenyGlobal,
@@ -1245,11 +1245,11 @@ func (q *Queries) FindForwardGlobalByName5(ctx context.Context, arg FindForwardG
 }
 
 const findForwardGlobalByName6 = `-- name: FindForwardGlobalByName6 :many
-select id, host, name, dns_svr, deny_global, status, create_time, update_time
+select id, client_host, name, dns_svr, deny_global, status, create_time, update_time
 from forward
 where (name = ? or name = ? or name = ? or name = ? or name = ? or name = ?)
-  and (host = ''
-    or host is null)
+  and (client_host = ''
+    or client_host is null)
   and status = 'ENABLE'
 `
 
@@ -1281,7 +1281,7 @@ func (q *Queries) FindForwardGlobalByName6(ctx context.Context, arg FindForwardG
 		var i Forward
 		if err := rows.Scan(
 			&i.ID,
-			&i.Host,
+			&i.ClientHost,
 			&i.Name,
 			&i.DnsSvr,
 			&i.DenyGlobal,

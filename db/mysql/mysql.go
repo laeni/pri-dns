@@ -52,7 +52,7 @@ func (s *StoreMysql) FindForwardByHostAndName(ctx context.Context, host, name st
 
 		forwards[i] = db.Forward{
 			ID:         temp.ID,
-			Host:       temp.Host,
+			ClientHost: temp.ClientHost,
 			Name:       temp.Name,
 			DnsSvr:     snsSvr,
 			DenyGlobal: strings.ToUpper(temp.DenyGlobal) == "Y",
@@ -91,7 +91,7 @@ func (s *StoreMysql) FindDomainByHostAndName(ctx context.Context, host, name str
 		temp := domainTemps[i]
 		domains[i] = db.Domain{
 			ID:         temp.ID,
-			Host:       temp.Host,
+			ClientHost: temp.ClientHost,
 			Name:       temp.Name,
 			Value:      temp.Value.String,
 			Ttl:        temp.Ttl.Int32,
@@ -172,13 +172,13 @@ func (s *StoreMysql) FindHistoryByHost(ctx context.Context, host string) []strin
 	// 去除否定用途的以及被否定数据否定的全局域名
 	denied := make(map[string]struct{}, 0)
 	for _, row := range forwards {
-		if row.Host != "" && row.DenyGlobal == "Y" {
+		if row.ClientHost != "" && row.DenyGlobal == "Y" {
 			denied[row.Name] = struct{}{}
 		}
 	}
 	j := 0
 	for i, row := range forwards {
-		if row.Host == "" {
+		if row.ClientHost == "" {
 			if _, ok := denied[row.Name]; ok {
 				continue
 			}

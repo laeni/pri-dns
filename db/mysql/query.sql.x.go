@@ -9,48 +9,48 @@ func (q *Queries) FindDomainByHostAndNameLike(ctx context.Context, host string, 
 		return nil, nil
 	case 1:
 		return q.FindDomainByHostAndNameLike1(ctx, FindDomainByHostAndNameLike1Params{
-			Host: host,
-			Name: names[0],
+			ClientHost: host,
+			Name:       names[0],
 		})
 	case 2:
 		return q.FindDomainByHostAndNameLike2(ctx, FindDomainByHostAndNameLike2Params{
-			Host:   host,
-			Name:   names[0],
-			Name_2: names[1],
+			ClientHost: host,
+			Name:       names[0],
+			Name_2:     names[1],
 		})
 	case 3:
 		return q.FindDomainByHostAndNameLike3(ctx, FindDomainByHostAndNameLike3Params{
-			Host:   host,
-			Name:   names[0],
-			Name_2: names[1],
-			Name_3: names[2],
+			ClientHost: host,
+			Name:       names[0],
+			Name_2:     names[1],
+			Name_3:     names[2],
 		})
 	case 4:
 		return q.FindDomainByHostAndNameLike4(ctx, FindDomainByHostAndNameLike4Params{
-			Host:   host,
-			Name:   names[0],
-			Name_2: names[1],
-			Name_3: names[2],
-			Name_4: names[3],
+			ClientHost: host,
+			Name:       names[0],
+			Name_2:     names[1],
+			Name_3:     names[2],
+			Name_4:     names[3],
 		})
 	case 5:
 		return q.FindDomainByHostAndNameLike5(ctx, FindDomainByHostAndNameLike5Params{
-			Host:   host,
-			Name:   names[0],
-			Name_2: names[1],
-			Name_3: names[2],
-			Name_4: names[3],
-			Name_5: names[4],
+			ClientHost: host,
+			Name:       names[0],
+			Name_2:     names[1],
+			Name_3:     names[2],
+			Name_4:     names[3],
+			Name_5:     names[4],
 		})
 	default: // 最多支持到 6 级域名
 		return q.FindDomainByHostAndNameLike6(ctx, FindDomainByHostAndNameLike6Params{
-			Host:   host,
-			Name:   names[0],
-			Name_2: names[len(names)-1],
-			Name_3: names[len(names)-2],
-			Name_4: names[len(names)-3],
-			Name_5: names[len(names)-4],
-			Name_6: names[len(names)-5],
+			ClientHost: host,
+			Name:       names[0],
+			Name_2:     names[len(names)-1],
+			Name_3:     names[len(names)-2],
+			Name_4:     names[len(names)-3],
+			Name_5:     names[len(names)-4],
+			Name_6:     names[len(names)-5],
 		})
 	}
 }
@@ -107,48 +107,48 @@ func (q *Queries) FindForwardByHostAndNameLike(ctx context.Context, host string,
 		return nil, nil
 	case 1:
 		return q.FindForwardByHostAndNameLike1(ctx, FindForwardByHostAndNameLike1Params{
-			Host: host,
-			Name: names[0],
+			ClientHost: host,
+			Name:       names[0],
 		})
 	case 2:
 		return q.FindForwardByHostAndNameLike2(ctx, FindForwardByHostAndNameLike2Params{
-			Host:   host,
-			Name:   names[0],
-			Name_2: names[1],
+			ClientHost: host,
+			Name:       names[0],
+			Name_2:     names[1],
 		})
 	case 3:
 		return q.FindForwardByHostAndNameLike3(ctx, FindForwardByHostAndNameLike3Params{
-			Host:   host,
-			Name:   names[0],
-			Name_2: names[1],
-			Name_3: names[2],
+			ClientHost: host,
+			Name:       names[0],
+			Name_2:     names[1],
+			Name_3:     names[2],
 		})
 	case 4:
 		return q.FindForwardByHostAndNameLike4(ctx, FindForwardByHostAndNameLike4Params{
-			Host:   host,
-			Name:   names[0],
-			Name_2: names[1],
-			Name_3: names[2],
-			Name_4: names[3],
+			ClientHost: host,
+			Name:       names[0],
+			Name_2:     names[1],
+			Name_3:     names[2],
+			Name_4:     names[3],
 		})
 	case 5:
 		return q.FindForwardByHostAndNameLike5(ctx, FindForwardByHostAndNameLike5Params{
-			Host:   host,
-			Name:   names[0],
-			Name_2: names[1],
-			Name_3: names[2],
-			Name_4: names[3],
-			Name_5: names[4],
+			ClientHost: host,
+			Name:       names[0],
+			Name_2:     names[1],
+			Name_3:     names[2],
+			Name_4:     names[3],
+			Name_5:     names[4],
 		})
 	default: // 最多支持到 6 级域名
 		return q.FindForwardByHostAndNameLike6(ctx, FindForwardByHostAndNameLike6Params{
-			Host:   host,
-			Name:   names[0],
-			Name_2: names[len(names)-1],
-			Name_3: names[len(names)-2],
-			Name_4: names[len(names)-3],
-			Name_5: names[len(names)-4],
-			Name_6: names[len(names)-5],
+			ClientHost: host,
+			Name:       names[0],
+			Name_2:     names[len(names)-1],
+			Name_3:     names[len(names)-2],
+			Name_4:     names[len(names)-3],
+			Name_5:     names[len(names)-4],
+			Name_6:     names[len(names)-5],
 		})
 	}
 }

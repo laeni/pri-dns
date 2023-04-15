@@ -26,25 +26,16 @@ type RecordFilter interface {
 
 // Domain 解析记录表.
 type Domain struct {
-	ID int64
-	// 客户端地址（生效范围）。<br />如果全局生效，则该字段为空。
-	Host string
-	// 主机记录。由于可能存在泛域名，所以为了便于使用索引，存储时将采用反转格式，如：example.com
-	Name string
-	// 记录值
-	Value string
-	// TTL
-	Ttl int32
-	// 记录类型。<br />A | AAAA
-	DnsType string
-	// 是否拒绝全局解析
-	DenyGlobal bool
-	// 状态。<br />ENABLE-启用
-	Status string
-	// 创建时间
-	CreateTime types.LocalTime
-	// 修改时间
-	UpdateTime types.LocalTime
+	ID         int64
+	ClientHost string          // 客户端地址（生效范围）。<br />如果全局生效，则该字段为空。
+	Name       string          // 主机记录。由于可能存在泛域名，所以为了便于使用索引，存储时将采用反转格式，如：example.com
+	Value      string          // 记录值
+	Ttl        int32           // TTL
+	DnsType    string          // 记录类型。<br />A | AAAA
+	DenyGlobal bool            // 是否拒绝全局解析
+	Status     string          // 状态。<br />ENABLE-启用
+	CreateTime types.LocalTime // 创建时间
+	UpdateTime types.LocalTime // 修改时间
 }
 
 func (d Domain) NameVal() string {
@@ -56,21 +47,14 @@ func (d Domain) DenyGlobalVal() bool {
 
 // Forward 转发配置.
 type Forward struct {
-	ID int64
-	// 客户端地址（生效范围）。<br />如果全局生效，则该字段为空。
-	Host string
-	// 需要转发解析的域名
-	Name string
-	// 转发目标DNS服务器
-	DnsSvr []string
-	// 是否拒绝全局解析
-	DenyGlobal bool
-	// 状态。<br />ENABLE-启用
-	Status string
-	// 创建时间
-	CreateTime types.LocalTime
-	// 修改时间
-	UpdateTime types.LocalTime
+	ID         int64
+	ClientHost string          // 客户端地址（生效范围）。<br />如果全局生效，则该字段为空。
+	Name       string          // 需要转发解析的域名
+	DnsSvr     []string        // 转发目标DNS服务器
+	DenyGlobal bool            // 是否拒绝全局解析
+	Status     string          // 状态。<br />ENABLE-启用
+	CreateTime types.LocalTime // 创建时间
+	UpdateTime types.LocalTime // 修改时间
 }
 
 func (f Forward) NameVal() string {

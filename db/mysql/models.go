@@ -14,7 +14,7 @@ import (
 type Domain struct {
 	ID int64
 	// 客户端地址（生效范围）。<br />如果全局生效，则该字段为空。
-	Host string
+	ClientHost string
 	// 主机记录。由于可能存在泛域名，所以为了便于使用索引，存储时将采用反转格式，如：example.com
 	Name string
 	// 记录值
@@ -37,7 +37,7 @@ type Domain struct {
 type Forward struct {
 	ID int64
 	// 客户端地址（生效范围）。<br />如果全局生效，则该字段为空。
-	Host string
+	ClientHost string
 	// 需要转发解析的域名
 	Name string
 	// 转发目标DNS服务器，可以是多个，多个以逗号分割
