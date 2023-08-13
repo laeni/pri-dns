@@ -2,7 +2,6 @@ package pri_dns
 
 import (
 	"crypto/tls"
-	"database/sql"
 	"fmt"
 	"github.com/coredns/caddy"
 	"github.com/coredns/coredns/core/dnsserver"
@@ -14,6 +13,8 @@ import (
 	"github.com/laeni/pri-dns/forward"
 	"github.com/laeni/pri-dns/types"
 	"github.com/miekg/dns"
+	gormDriver "gorm.io/driver/mysql"
+	"gorm.io/gorm"
 	"strconv"
 	"time"
 )
@@ -274,7 +275,11 @@ func parsePriDns(c *caddy.Controller) (*types.Config, error) {
 func initDb(c *caddy.Controller, config *types.Config) (db.Store, error) {
 	switch config.StoreType {
 	case storeTypeMySQL:
-		d, err := sql.Open("mysql", config.MySQL.DataSourceName)
+		ormDb, err := gorm.Open(gormDriver.Open(config.MySQL.DataSourceName))
+		if err != nil {
+			log.Fatal(err)
+		}
+		d, err := ormDb.DB()
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -287,7 +292,7 @@ func initDb(c *caddy.Controller, config *types.Config) (db.Store, error) {
 		d.SetMaxOpenConns(config.MySQL.MaxOpenConns)
 		// SetConnMaxLifetime 设置了连接可复用的最大时间。
 		d.SetConnMaxLifetime(config.MySQL.ConnMaxLifetime)
-		store := mysql.NewStore(d)
+		store := mysql.NewStore(ormDb)
 		return &store, nil
 	}
 	return nil, nil

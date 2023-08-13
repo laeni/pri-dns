@@ -9,7 +9,6 @@ import (
 	"crypto/tls"
 	"errors"
 	"github.com/coredns/coredns/plugin/pkg/parse"
-	"github.com/laeni/pri-dns/db"
 	"github.com/laeni/pri-dns/types"
 	"github.com/laeni/pri-dns/util"
 	"sort"
@@ -41,8 +40,6 @@ var (
 
 	// ErrNoHealthy means no healthy proxies left.
 	ErrNoHealthy = errors.New("no healthy proxies")
-	// ErrNoForward means no forwarder defined.
-	ErrNoForward = errors.New("no forwarder defined")
 	// ErrCachedClosed means cached connection was closed by peer.
 	ErrCachedClosed = errors.New("cached connection was closed by peer")
 )
@@ -65,7 +62,7 @@ func Run(proxies []*Proxy, ctx context.Context, state request.Request) (int, err
 
 		proxy := list[i]
 		i++
-		// 跳过健康检查未通过的（最后一次不跳过，因为即使健康检查即使不通过也可能可以正常使用）
+		// 跳过健康检查未通过的（最后一次不跳过，因为即使健康检查不通过也可能可以正常使用）
 		if proxy.Down(maxFails) {
 			fails++
 			if fails < len(list) {
@@ -134,7 +131,7 @@ func getAddress(ret *dns.Msg) []string {
 	return ads
 }
 
-//#region ProxyCache
+// region ProxyCache
 
 type proxyCacheWrapper struct {
 	dnsSvr       string    // 上游DNS地址
@@ -168,54 +165,52 @@ func (pc proxyCacheType) Swap(i, j int) {
 
 var proxyCache = make(proxyCacheType, 0, maxProxyCache)
 
-//#endregion
+// endregion
 
 // GetProxy 根据 forwards 数据从缓存查询对应的 Proxy 实例，如果缓存不存在则创建新实例加入缓存
-func GetProxy(config *types.Config, forwards []db.Forward, RegisterCloseHook func(func()) func()) ([]*Proxy, error) {
+func GetProxy(config *types.Config, dnsSvrArray []string, RegisterCloseHook func(func()) func()) ([]*Proxy, error) {
 	var proxies []*Proxy
 	var err error
-	for _, forward := range forwards {
-		for _, dnsSvr := range forward.DnsSvr {
-			// 规范化DNS地址
-			toHosts, perErr := parse.HostPortOrFile(dnsSvr)
-			if perErr != nil {
-				err = perErr
-				continue
+	for _, dnsSvr := range dnsSvrArray {
+		// 规范化DNS地址
+		toHosts, perErr := parse.HostPortOrFile(dnsSvr)
+		if perErr != nil {
+			err = perErr
+			continue
+		}
+
+		for _, svr := range toHosts {
+			if len(proxies) >= maxDnsSvr {
+				return proxies, nil
 			}
 
-			for _, svr := range toHosts {
-				if len(proxies) >= maxDnsSvr {
-					return proxies, nil
+			wrapper := proxyCache.get(svr)
+			// 如果不存在则创建新的代理实例放入缓存
+			if wrapper == nil {
+				p := newProxy(svr, config.Tls)
+				wrapper = &proxyCacheWrapper{
+					dnsSvr:       svr,
+					activityTime: time.Now(),
+					proxy:        p,
+					closeHook:    RegisterCloseHook(p.stop),
 				}
-
-				wrapper := proxyCache.get(svr)
-				// 如果不存在则创建新的代理实例放入缓存
-				if wrapper == nil {
-					p := newProxy(svr, config.Tls)
-					wrapper = &proxyCacheWrapper{
-						dnsSvr:       svr,
-						activityTime: time.Now(),
-						proxy:        p,
-						closeHook:    RegisterCloseHook(p.stop),
+				// 如果缓存已经超过最大限制，则删除不活跃的
+				if len(proxyCache) > maxProxyCache {
+					sort.Sort(proxyCache)
+					proxyCacheTmp, removed := proxyCache[:len(proxyCache)-5], proxyCache[len(proxyCache)-5:]
+					proxyCache = proxyCacheTmp
+					// 移除的代理需要关闭健康检查
+					for _, it := range removed {
+						it.proxy.stop()
+						// 已经关闭的Proxy要取消注册
+						it.closeHook()
 					}
-					// 如果缓存已经超过最大限制，则删除不活跃的
-					if len(proxyCache) > maxProxyCache {
-						sort.Sort(proxyCache)
-						proxyCacheTmp, removed := proxyCache[:len(proxyCache)-5], proxyCache[len(proxyCache)-5:]
-						proxyCache = proxyCacheTmp
-						// 移除的代理需要关闭健康检查
-						for _, it := range removed {
-							it.proxy.stop()
-							// 已经关闭的Proxy要取消注册
-							it.closeHook()
-						}
-					}
-					proxyCache = append(proxyCache, wrapper)
-				} else {
-					wrapper.activityTime = time.Now()
 				}
-				proxies = append(proxies, wrapper.proxy)
+				proxyCache = append(proxyCache, wrapper)
+			} else {
+				wrapper.activityTime = time.Now()
 			}
+			proxies = append(proxies, wrapper.proxy)
 		}
 	}
 	return proxies, err

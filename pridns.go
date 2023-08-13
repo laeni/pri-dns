@@ -9,9 +9,9 @@ import (
 	"github.com/laeni/pri-dns/db"
 	myForward "github.com/laeni/pri-dns/forward"
 	"github.com/laeni/pri-dns/types"
-	"github.com/laeni/pri-dns/util"
 	"github.com/miekg/dns"
 	"net"
+	"strings"
 	"sync"
 	"time"
 )
@@ -87,7 +87,6 @@ func NewPriDns(config *types.Config, store db.Store) *PriDns {
 				}()
 
 				// 入库
-				ctx := context.Background()
 				for name, mp := range mapTmp {
 					his := make([]string, len(mp))
 					i := 0
@@ -95,7 +94,7 @@ func NewPriDns(config *types.Config, store db.Store) *PriDns {
 						his[i] = it
 						i++
 					}
-					if err := d.Store.SavaHistory(ctx, name, his); err != nil {
+					if err := d.Store.SavaHistory(name, his); err != nil {
 						log.Error(err)
 					}
 				}
@@ -124,8 +123,9 @@ func (d *PriDns) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg)
 		state.Name(), state.IP(), state.Type(), state.QType(), state.Class(), state.QClass())
 
 	// step.1 如果配置了自定义解析，则直接响应配置的自定义解析即可
-	answers := handQuery(d, ctx, state)
+	answers := handQuery(d, state)
 	if len(answers) != 0 {
+		log.Debugf("已找到自定义解析记录: %v", answers)
 		m := new(dns.Msg)
 		m.SetReply(r)
 		m.Authoritative = true
@@ -171,42 +171,109 @@ func (d *PriDns) RegisterCloseHook(f func()) func() {
 	}
 }
 
-// filterRecord 根据查询域名 qname 过滤掉不需要的数据，并且通过第二个返回值表示是否需要不需要使用全局数据
-func filterRecord[T db.RecordFilter](qname string, records []T) ([]T, bool) {
+// filterRecord 根据查询域名 qname 及优先级找一个最佳的
+func filterRecord(records []db.Forward) db.Forward {
 	if len(records) == 0 {
-		return nil, false
+		panic("需要过滤的数据不能为空")
 	}
 
-	names := util.GenAllMatchDomain(qname)
-	// 标记是否需要拒绝全局解析
-	deny := false
-	t := make([]T, 0, len(records))
-	for _, name := range names {
-		t = t[:0]
-		for _, record := range records {
-			if record.DenyGlobalVal() {
-				deny = true
-			} else {
-				if record.NameVal() == name {
-					t = append(t, record)
-				}
-			}
-		}
-		if len(t) != 0 {
-			return append(records[:0], t...), false
+	t := records[0]
+	for i := 1; i < len(records); i++ {
+		if matchPriorityCompare(records[i], t) > 0 {
+			t = records[i]
 		}
 	}
-	return nil, deny
+
+	return t
 }
 
-//#region query
+// filterDomain 根据查询域名 qname 及优先级找最佳的解析，同一个域名的解析记录可能由多个
+func filterDomain(domains []db.Domain) map[string][]db.Domain {
+	if len(domains) == 0 {
+		return nil
+	}
+
+	// 根据解析类型分类（A、AAAA等）
+	domainByDnsType := make(map[string][]db.Domain)
+	for _, domain := range domains {
+		if domainByDnsType[domain.DnsType] == nil {
+			domainByDnsType[domain.DnsType] = []db.Domain{domain}
+		} else {
+			domainByDnsType[domain.DnsType] = append(domainByDnsType[domain.DnsType], domain)
+		}
+	}
+
+	// 每个分类中，根据优先级选择最匹配的解析记录，优先级为：私有解析 > 全局解析; 精准匹配 > 泛解析; 精度高的泛解析 > 精度低的泛解析
+	for dnsType, items := range domainByDnsType {
+		if len(items) <= 1 {
+			continue
+		}
+		var slice []db.Domain
+		for _, item := range items {
+			if len(slice) == 0 {
+				slice = []db.Domain{item}
+			} else {
+				compare := matchPriorityCompare(item, slice[0])
+				if compare > 0 {
+					slice = []db.Domain{item}
+				}
+				if compare == 0 {
+					slice = append(slice, item)
+				}
+				// compare < 0 时直接丢弃
+			}
+		}
+		domainByDnsType[dnsType] = slice
+	}
+	// 如果由拒绝策略，则忽略
+	for dnsType, items := range domainByDnsType {
+		for _, item := range items {
+			if item.DenyGlobal {
+				delete(domainByDnsType, dnsType)
+			}
+		}
+	}
+
+	return domainByDnsType
+}
+
+// 根据域名匹配规则比较 a 和 b 的优先级，优先级为：私有解析 > 全局解析; 精准匹配 > 泛解析; 精度高的泛解析 > 精度低的泛解析，
+// 如果 a 优先级高于 b，则返回 1；如果 a 和 b 优先级相同则返回 0；如果 a 优先级低于 b 则返回 -1
+func matchPriorityCompare(a, b db.RecordFilter) int {
+	// 私有解析 > 全局解析
+	if a.ClientHostVal() != "" && b.ClientHostVal() == "" {
+		return 1
+	}
+	if a.ClientHostVal() == "" && b.ClientHostVal() != "" {
+		return -1
+	}
+	aName := a.NameVal()
+	bName := b.NameVal()
+	// 精准匹配 > 泛解析
+	if !strings.Contains(aName, "*") && strings.Contains(bName, "*") {
+		return 1
+	}
+	if strings.Contains(aName, "*") && !strings.Contains(bName, "*") {
+		return -1
+	}
+	// 精度高的泛解析 > 精度低的泛解析
+	if len(aName) > len(bName) {
+		return 1
+	}
+	if len(aName) < len(bName) {
+		return -1
+	}
+	return 0
+}
+
+// region query
 
 // handQuery 根据查询名称 qname 和客户端IP remoteIp 查询解析
 // 查询规则为：
 //  1. 先查询本地添加的解析
 //  2. 如果本地没有对应解析则根据规则转发给上游服务器处理
 //     如果在规则列表中，则转发到根据规则中指定的上游服务器，否则让下一个插件处理
-func handQuery(d *PriDns, ctx context.Context, state request.Request) []dns.RR {
+func handQuery(d *PriDns, state request.Request) []dns.RR {
 	qname := state.Name()
 	qname = qname[:len(qname)-1]
 
@@ -215,44 +282,45 @@ func handQuery(d *PriDns, ctx context.Context, state request.Request) []dns.RR {
 		return nil
 	}
 
-	// 依次查询私有解析和全局解析
-	for _, s := range []string{state.IP(), ""} {
-		domains := d.Store.FindDomainByHostAndName(ctx, s, qname)
-		// 查询解析,查询后需要过滤掉不需要的（由于查询时一次性查询可能需要的，所以这里需要过滤掉不需要的）
-		domains, deny := filterRecord(qname, domains)
-		if deny {
-			return nil
-		}
-		if len(domains) == 0 {
-			continue
-		}
+	// 一次查询私有解析（clientHost 对应的数据）和全局解析（clientHost 对空的数据）
+	domains := d.Store.FindDomainByHostAndName(state.IP(), qname)
+	if len(domains) == 0 {
+		return nil
+	}
+	// 根据优先级找到最匹配的一个
+	domainByType := filterDomain(domains)
+	if len(domainByType) == 0 {
+		return nil
+	}
 
-		answers := make([]dns.RR, 0, len(domains))
-		for _, domain := range domains {
-			switch domain.DnsType {
-			case "A":
+	answers := make([]dns.RR, 0, len(domains))
+	for tp, items := range domainByType {
+		switch tp {
+		case "A":
+			for _, domain := range items {
 				r := new(dns.A)
 				r.Hdr = dns.RR_Header{Name: qname + ".", Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: uint32(domain.Ttl)}
 				r.A = net.ParseIP(domain.Value)
 				answers = append(answers, r)
-			case "AAAA":
+			}
+		case "AAAA":
+			for _, domain := range items {
 				r := new(dns.AAAA)
 				r.Hdr = dns.RR_Header{Name: qname + ".", Rrtype: dns.TypeAAAA, Class: dns.ClassINET, Ttl: uint32(domain.Ttl)}
 				r.AAAA = net.ParseIP(domain.Value)
 				answers = append(answers, r)
-			default:
-				log.Warningf("不支持%s类型!\n", domain.DnsType)
 			}
+		default:
+			log.Warningf("不支持%s类型!\n", tp)
 		}
-
-		return answers
 	}
-	return nil
+
+	return answers
 }
 
-//#endregion
+// endregion
 
-//#region forward
+// region forward
 
 // 尝试处理转发，如果 handForward 已经做出响应（如一个查询需要进行转发或者出现异常情况需要返回），则 ok 为 true，此时直接将 code, err 作为 ServeDNS 返回值即可
 // 如果 ok 为 false，则表示 handForward 方法不处理查询，这时一般需要转发给下一个插件处理
@@ -260,42 +328,41 @@ func handForward(d *PriDns, ctx context.Context, state request.Request) (ok bool
 	qname := state.Name()
 	qname = qname[:len(qname)-1]
 
-	// 依次查询私有解析和全局解析
-	for _, s := range []string{state.IP(), ""} {
-		forwards := d.Store.FindForwardByHostAndName(ctx, s, qname)
-		// 查询转发,查询后需要过滤掉不需要的（由于查询时一次性查询可能需要的，所以这里需要过滤掉不需要的）
-		forwards, deny := filterRecord(qname, forwards)
-		if deny {
-			return
-		}
-		if len(forwards) == 0 {
-			continue
-		}
-		ok = true
+	// 一次查询私有转发（clientHost 对应的数据）和全局转发（clientHost 对空的数据）
+	forwards := d.Store.FindForwardByHostAndName(state.IP(), qname)
+	if len(forwards) == 0 {
+		return
+	}
+	// 根据优先级找到最合适的个转发配置（相同的”转发配置“只能由一个，所以这里有且只有一个结果）
+	forward := filterRecord(forwards)
+	if forward.DenyGlobal {
+		log.Debug("没有有效的转发记录")
+		return
+	}
+	log.Debugf("将域名转发给 %v 处理", forward.DnsSvr)
+	ok = true
 
-		// 查询对应的 Proxy 实例
-		proxies, err2 := myForward.GetProxy(d.Config, forwards, d.RegisterCloseHook)
-		if err2 != nil {
-			code = dns.RcodeServerFailure
-			err = err2
-			return
-		}
-
-		// 转发请求
-		code2, err2, rrs := myForward.Run(proxies, ctx, state)
-		code = code2
+	// 查询对应的 Proxy 实例
+	proxies, err2 := myForward.GetProxy(d.Config, forward.DnsSvr, d.RegisterCloseHook)
+	if err2 != nil {
+		code = dns.RcodeServerFailure
 		err = err2
-
-		// 存储解析历史
-		if rrs != nil {
-			d.pushHisChan <- address{name: forwards[0].Name, ads: rrs}
-		}
 		return
 	}
 
+	// 转发请求
+	code2, err2, rrs := myForward.Run(proxies, ctx, state)
+	code = code2
+	err = err2
+
+	if rrs != nil {
+		log.Debugf("代理返回结果: %v", rrs)
+		// 存储解析历史
+		d.pushHisChan <- address{name: forwards[0].Name, ads: rrs}
+	}
 	return
 }
 
-//#endregion
+// endregion
 
 // 规划化域名 '.' 'example.com.' - _ = plugin.Host("example.com.").NormalizeExact()[0]

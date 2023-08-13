@@ -1,7 +1,6 @@
 package pri_dns
 
 import (
-	"context"
 	"fmt"
 	"github.com/kataras/iris/v12"
 	cidrMerger "github.com/laeni/pri-dns/cidr-merger"
@@ -73,7 +72,7 @@ func newApp(store db.Store) *iris.Application {
 			addr := ctx.RemoteAddr()
 			v := ctx.URLParamIntDefault("v", 2)
 
-			hosts, hisExs := store.FindHistoryByHost(context.Background(), addr)
+			hosts, hisExs := store.FindHistoryByHost(addr)
 			{
 				// 解析IP地址
 				hostIPNets := cidrMerger.StrToIpNet(hosts)

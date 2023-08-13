@@ -1,26 +1,26 @@
 package db
 
 import (
-	"context"
 	"github.com/laeni/pri-dns/types"
 )
 
 type Store interface {
 	// FindForwardByHostAndName 查询客户端对应的转发配置，当 host 为 “” 时表示查询全局配置.
-	FindForwardByHostAndName(ctx context.Context, host, name string) []Forward
+	FindForwardByHostAndName(host, name string) []Forward
 
 	// FindDomainByHostAndName 查询 qname 的解析记录。如果 host 不为空，则查询host下的解析，如果为空则只查询全局解析
-	FindDomainByHostAndName(ctx context.Context, host, qname string) []Domain
+	FindDomainByHostAndName(host, qname string) []Domain
 
 	// SavaHistory 保存历史
-	SavaHistory(ctx context.Context, name string, newHis []string) error
+	SavaHistory(name string, newHis []string) error
 
 	// FindHistoryByHost 查询客户端对应的解析历史，当 host 为 “” 时表示查询全局配置.
 	// 其中返回值的二个值表示需要排除的网段
-	FindHistoryByHost(ctx context.Context, host string) ([]string, []string)
+	FindHistoryByHost(host string) ([]string, []string)
 }
 
 type RecordFilter interface {
+	ClientHostVal() string
 	NameVal() string
 	DenyGlobalVal() bool
 }
@@ -39,6 +39,9 @@ type Domain struct {
 	UpdateTime types.LocalTime // 修改时间
 }
 
+func (d Domain) ClientHostVal() string {
+	return d.ClientHost
+}
 func (d Domain) NameVal() string {
 	return d.Name
 }
@@ -58,6 +61,9 @@ type Forward struct {
 	UpdateTime types.LocalTime // 修改时间
 }
 
+func (f Forward) ClientHostVal() string {
+	return f.ClientHost
+}
 func (f Forward) NameVal() string {
 	return f.Name
 }

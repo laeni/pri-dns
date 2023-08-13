@@ -1,45 +1,28 @@
 package mysql
 
 import (
-	"context"
 	"database/sql"
-	"fmt"
+	"errors"
 	cidr_merger "github.com/laeni/pri-dns/cidr-merger"
 	"github.com/laeni/pri-dns/db"
 	"github.com/laeni/pri-dns/util"
+	"gorm.io/gorm"
 	"strings"
 )
 
 type StoreMysql struct {
-	db      *sql.DB
-	queries *Queries
+	db *gorm.DB
 }
 
-func NewStore(db *sql.DB) StoreMysql {
-	return StoreMysql{db: db, queries: New(db)}
+func NewStore(db *gorm.DB) StoreMysql {
+	return StoreMysql{db: db}
 }
 
-func (s *StoreMysql) FindForwardByHostAndName(ctx context.Context, host, name string) []db.Forward {
+func (s *StoreMysql) FindForwardByHostAndName(host, name string) []db.Forward {
 	names := util.GenAllMatchDomain(name)
 
 	var forwardTemps []Forward
-	var err error
-	tx, err := s.db.Begin()
-	if err != nil {
-		panic(err)
-	}
-	defer tx.Rollback()
-	if host != "" {
-		forwardTemps, err = s.queries.WithTx(tx).FindForwardByHostAndNameLike(ctx, host, names)
-	} else {
-		forwardTemps, err = s.queries.WithTx(tx).FindForwardGlobalByName(ctx, names)
-	}
-	if err != nil {
-		panic(err)
-	}
-	if err = tx.Commit(); err != nil {
-		panic(err)
-	}
+	s.db.Where("name IN ? AND (client_host IS NULL OR client_host = '' OR client_host = ?)", names, host).Find(&forwardTemps)
 
 	forwards := make([]db.Forward, len(forwardTemps))
 	for i := 0; i < len(forwardTemps); i++ {
@@ -64,27 +47,11 @@ func (s *StoreMysql) FindForwardByHostAndName(ctx context.Context, host, name st
 	return forwards
 }
 
-func (s *StoreMysql) FindDomainByHostAndName(ctx context.Context, host, name string) []db.Domain {
+func (s *StoreMysql) FindDomainByHostAndName(host, name string) []db.Domain {
 	names := util.GenAllMatchDomain(name)
 
 	var domainTemps []Domain
-	var err error
-	tx, err := s.db.Begin()
-	if err != nil {
-		panic(err)
-	}
-	defer tx.Rollback()
-	if host != "" {
-		domainTemps, err = s.queries.WithTx(tx).FindDomainByHostAndNameLike(ctx, host, names)
-	} else {
-		domainTemps, err = s.queries.WithTx(tx).FindDomainGlobalByName(ctx, names)
-	}
-	if err != nil {
-		panic(err)
-	}
-	if err = tx.Commit(); err != nil {
-		panic(err)
-	}
+	s.db.Where("name IN ? AND (client_host IS NULL OR client_host = '' OR client_host = ?)", names, host).Find(&domainTemps)
 
 	domains := make([]db.Domain, len(domainTemps))
 	for i := 0; i < len(domainTemps); i++ {
@@ -105,17 +72,18 @@ func (s *StoreMysql) FindDomainByHostAndName(ctx context.Context, host, name str
 	return domains
 }
 
-func (s *StoreMysql) SavaHistory(ctx context.Context, name string, newHis []string) error {
-	tx, err := s.db.Begin()
-	if err != nil {
-		return err
+func (s *StoreMysql) SavaHistory(name string, newHis []string) error {
+	tx := s.db.Begin()
+	if tx.Error != nil {
+		return tx.Error
 	}
 	defer tx.Rollback()
 
 	var oldHis []string
-	historyTmp, err := s.queries.WithTx(tx).FindHistoryByName(ctx, name)
+	var historyTmp History
+	err := s.db.Where("name = ?", name).Take(&historyTmp).Error
 	if err != nil {
-		if err != sql.ErrNoRows {
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
 			return err
 		}
 	} else {
@@ -138,34 +106,31 @@ func (s *StoreMysql) SavaHistory(ctx context.Context, name string, newHis []stri
 	}
 	if sava {
 		if len(oldHis) == 0 {
-			err = s.queries.WithTx(tx).InsertHistory(ctx, InsertHistoryParams{
-				Name:    name,
-				History: sql.NullString{Valid: true, String: strings.Join(ipHis, ",")},
-			})
+			his := History{Name: name, History: sql.NullString{Valid: true, String: strings.Join(ipHis, ",")}}
+			err = s.db.Create(&his).Error
 		} else {
-			err = s.queries.WithTx(tx).UpdateHistory(ctx, UpdateHistoryParams{
-				Name:    name,
-				History: sql.NullString{Valid: true, String: strings.Join(ipHis, ",")},
-			})
+			err = s.db.Model(&History{}).Where("name = ?", name).
+				Update("history", sql.NullString{Valid: true, String: strings.Join(ipHis, ",")}).Error
 		}
 		if err != nil {
 			return err
 		}
 	}
 
-	return tx.Commit()
+	tx.Commit()
+	return nil
 }
 
-func (s *StoreMysql) FindHistoryByHost(ctx context.Context, host string) ([]string, []string) {
-	tx, err := s.db.Begin()
-	if err != nil {
-		panic(err)
+func (s *StoreMysql) FindHistoryByHost(host string) ([]string, []string) {
+	tx := s.db.Begin()
+	if tx.Error != nil {
+		panic(tx.Error)
 	}
 	defer tx.Rollback()
-	withTx := s.queries.WithTx(tx)
 
 	// 查询全局和客户端对应的转发域名
-	forwards, err := withTx.FindForwardByHost(ctx, host)
+	var forwards []Forward
+	err := tx.Where("status = 'ENABLE' AND (client_host IS NULL OR client_host = '' OR client_host = ?)").Find(&forwards).Error
 	if err != nil {
 		panic(err)
 	}
@@ -194,7 +159,11 @@ func (s *StoreMysql) FindHistoryByHost(ctx context.Context, host string) ([]stri
 	forwards = forwards[:j]
 
 	// 查询转发域名对应的解析历史
-	his, err := findHistoryHostsByNames(ctx, tx, forwards)
+	names := make([]string, len(forwards))
+	for i, s := range forwards {
+		names[i] = s.Name
+	}
+	his, err := findHistoryHostsByNames(tx, names)
 	if err != nil {
 		panic(err)
 	}
@@ -202,7 +171,8 @@ func (s *StoreMysql) FindHistoryByHost(ctx context.Context, host string) ([]stri
 	his = util.SliceDeduplication(his)
 
 	// 查询需要排除的网段，比如内网网段
-	historyExes, err := withTx.FindHistoryExByName(ctx, host)
+	var historyExes []HistoryEx
+	err = tx.Where("client_host IS NULL OR client_host = '' OR client_host = ?", host).Find(&historyExes).Error
 	if err != nil {
 		panic(err)
 	}
@@ -235,44 +205,18 @@ func (s *StoreMysql) FindHistoryByHost(ctx context.Context, host string) ([]stri
 }
 
 // 查询域名对应的解析IP历史
-func findHistoryHostsByNames(ctx context.Context, tx *sql.Tx, forwards []FindForwardByHostRow) ([]string, error) {
-	l := len(forwards)
-	sqlStr := fmt.Sprintf("select history from history where %s", func() string {
-		if l == 0 {
-			return "0=1"
-		}
-		args := make([]string, l)
-		for i := 0; i < l; i++ {
-			args[i] = "?"
-		}
-		return "name in (" + strings.Join(args, ", ") + ")"
-	}())
-
-	args := make([]interface{}, l)
-	for i, s := range forwards {
-		args[i] = s.Name
-	}
-
-	rows, err := tx.QueryContext(ctx, sqlStr, args...)
+func findHistoryHostsByNames(tx *gorm.DB, names []string) ([]string, error) {
+	var his []History
+	err := tx.Where("name IN ?", names).Find(&his).Error
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+
 	var items []string
-	for rows.Next() {
-		var history sql.NullString
-		if err := rows.Scan(&history); err != nil {
-			return nil, err
+	for _, item := range his {
+		if item.History.String != "" {
+			items = append(items, strings.Split(item.History.String, ",")...)
 		}
-		if history.String != "" {
-			items = append(items, strings.Split(history.String, ",")...)
-		}
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
 	}
 	return items, nil
 }
