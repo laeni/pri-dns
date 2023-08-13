@@ -165,34 +165,25 @@ func excludeIpRange(irs []*cidrMerger.Range, exs []*cidrMerger.Range) []*cidrMer
 	irsTmp := make([]*cidrMerger.Range, 0, len(irs))
 	for i, exRange := range exs {
 		for _, irRange := range irs {
-			if isIpBefore(irRange.Start, exRange.Start) {
-				if isIpBefore(irRange.End, exRange.Start) {
-					// ` |irRange.Start   |irRange.End
-					// `                     |exRange.Start  |exRange.End
-					irsTmp = append(irsTmp, irRange)
-				} else if isIpBefore(irRange.End, exRange.End) {
-					// ` |irRange.Start   |irRange.End
-					// `    |exRange.Start  |exRange.End
-					irsTmp = append(irsTmp, &cidrMerger.Range{Start: irRange.Start, End: ipMinusOne(exRange.Start)})
-				} else {
-					// ` |irRange.Start         |irRange.End
-					// `    |exRange.Start  |exRange.End
-					irsTmp = append(irsTmp, &cidrMerger.Range{Start: irRange.Start, End: ipMinusOne(exRange.Start)}, &cidrMerger.Range{Start: ipPlusOne(exRange.End), End: irRange.End})
-				}
+			if isIpBefore(irRange.Start, exRange.Start) && isIpBefore(exRange.End, irRange.End) {
+				// ` |irRange.Start          |irRange.End
+				// `     |exRange.Start  |exRange.End
+				irsTmp = append(irsTmp, &cidrMerger.Range{Start: irRange.Start, End: ipMinusOne(exRange.Start)})
+				irsTmp = append(irsTmp, &cidrMerger.Range{Start: ipPlusOne(exRange.End), End: irRange.End})
+			} else if irRange.End.Equal(exRange.Start) || (isIpBefore(irRange.Start, exRange.Start) && isIpBefore(exRange.Start, irRange.End)) {
+				// ` |irRange.Start   |irRange.End
+				// `     |exRange.Start  |exRange.End
+				irsTmp = append(irsTmp, &cidrMerger.Range{Start: irRange.Start, End: ipMinusOne(exRange.Start)})
+			} else if irRange.Start.Equal(exRange.End) || isIpBefore(irRange.Start, exRange.End) && isIpBefore(exRange.End, irRange.End) {
+				// `     |irRange.Start   |irRange.End
+				// ` |exRange.Start  |exRange.End
+				irsTmp = append(irsTmp, &cidrMerger.Range{Start: ipPlusOne(exRange.End), End: irRange.End})
+			} else if isIpBefore(irRange.End, exRange.Start) || isIpBefore(exRange.End, irRange.Start) {
+				// ` |irRange.Start   |irRange.End                     ||                      |irRange.Start   |irRange.End
+				// `                     |exRange.Start  |exRange.End  ||  |exRange.Start  |exRange.End
+				irsTmp = append(irsTmp, irRange)
 			} else {
-				if isIpBefore(exRange.End, irRange.Start) {
-					// `                    |irRange.Start   |irRange.End
-					// ` |exRange.Start  |exRange.End
-					irsTmp = append(irsTmp, irRange)
-				} else if isIpBefore(irRange.End, exRange.End) {
-					// `     |irRange.Start   |irRange.End
-					// ` |exRange.Start          |exRange.End
-					continue
-				} else {
-					// `     |irRange.Start   |irRange.End
-					// ` |exRange.Start    |exRange.End
-					irsTmp = append(irsTmp, &cidrMerger.Range{Start: ipPlusOne(exRange.Start), End: irRange.End})
-				}
+				// 其他情况忽略
 			}
 		}
 
