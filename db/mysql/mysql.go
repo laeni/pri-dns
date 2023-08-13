@@ -130,7 +130,7 @@ func (s *StoreMysql) FindHistoryByHost(host string) ([]string, []string) {
 
 	// 查询全局和客户端对应的转发域名
 	var forwards []Forward
-	err := tx.Where("status = 'ENABLE' AND (client_host IS NULL OR client_host = '' OR client_host = ?)").Find(&forwards).Error
+	err := tx.Where("status = 'ENABLE' AND (client_host IS NULL OR client_host = '' OR client_host = ?)", host).Find(&forwards).Error
 	if err != nil {
 		panic(err)
 	}
