@@ -36,9 +36,7 @@ type PriDns struct {
 	// 用于存储销毁钩子函数，这些函数将关闭插件时调用，比如配置刷新时需要关闭原有的插件实例，其中 key 为随机数
 	closeHook map[string]func()
 	// closeFunc 函数将在实例销毁时调用
-	closeFunc func() error
-	// 域名和IP. {"laeni.cn": {"127.0.0.1":nil, "127.0.0.2":nil}}
-	adsHistory  map[string]map[string]struct{}
+	closeFunc   func() error
 	pushHisChan chan address
 	hisMutex    sync.Mutex
 	initFunc    func() error
@@ -46,6 +44,7 @@ type PriDns struct {
 
 func NewPriDns(config *types.Config, store db.Store) *PriDns {
 	closeHook := make(map[string]func())
+	// 域名和IP. {"laeni.cn": {"127.0.0.1":nil, "127.0.0.2":nil}}
 	adsHistory := make(map[string]map[string]struct{})
 	pushHisChan := make(chan address, 1000)
 	ticker := time.NewTicker(time.Minute)
@@ -54,7 +53,6 @@ func NewPriDns(config *types.Config, store db.Store) *PriDns {
 		Config:      config,
 		Store:       store,
 		closeHook:   closeHook,
-		adsHistory:  adsHistory,
 		pushHisChan: pushHisChan,
 	}
 

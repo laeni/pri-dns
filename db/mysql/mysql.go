@@ -3,11 +3,13 @@ package mysql
 import (
 	"database/sql"
 	"errors"
-	cidr_merger "github.com/laeni/pri-dns/cidr-merger"
+	cidrmerger "github.com/laeni/pri-dns/cidr-merger"
 	"github.com/laeni/pri-dns/db"
+	"github.com/laeni/pri-dns/types"
 	"github.com/laeni/pri-dns/util"
 	"gorm.io/gorm"
 	"strings"
+	"time"
 )
 
 type StoreMysql struct {
@@ -106,7 +108,12 @@ func (s *StoreMysql) SavaHistory(name string, newHis []string) error {
 	}
 	if sava {
 		if len(oldHis) == 0 {
-			his := History{Name: name, History: sql.NullString{Valid: true, String: strings.Join(ipHis, ",")}}
+			his := History{
+				Name:       name,
+				History:    sql.NullString{Valid: true, String: strings.Join(ipHis, ",")},
+				CreateTime: types.LocalTime(time.Now()),
+				UpdateTime: types.LocalTime(time.Now()),
+			}
 			err = s.db.Create(&his).Error
 		} else {
 			err = s.db.Model(&History{}).Where("name = ?", name).
@@ -223,7 +230,7 @@ func findHistoryHostsByNames(tx *gorm.DB, names []string) ([]string, error) {
 
 // mergeIp 对ip进行合并
 func mergeIp(in []string) []string {
-	result := cidr_merger.IpNetToRange(cidr_merger.StrToIpNet(in))
-	result = cidr_merger.SortAndMerge(result)
-	return cidr_merger.IpNetToString(cidr_merger.IpRangeToIpNet(result))
+	result := cidrmerger.IpNetToRange(cidrmerger.StrToIpNet(in))
+	result = cidrmerger.SortAndMerge(result)
+	return cidrmerger.IpNetToString(cidrmerger.IpRangeToIpNet(result))
 }

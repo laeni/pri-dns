@@ -69,16 +69,13 @@ func newApp(store db.Store) *iris.Application {
 	{
 		// 获取 WireGuard 代理IP
 		getIpLine := func(ctx iris.Context) {
-			addr := ctx.RemoteAddr()
-			v := ctx.URLParamIntDefault("v", 2)
-
-			hosts, hisExs := store.FindHistoryByHost(addr)
+			hosts, hisExs := store.FindHistoryByHost(ctx.RemoteAddr())
 			{
 				// 解析IP地址
 				hostIPNets := cidrMerger.StrToIpNet(hosts)
 
 				// 根据版本进行合并
-				switch v {
+				switch ctx.URLParamIntDefault("v", 2) {
 				case 1: // mask=8&level=100 & mask=12&level=50 & mask=16&level=10 & mask=24&level=1
 					query := ctx.Request().URL.Query()
 					masks, maskOk := query["mask"]    // 掩码位数. 取值为 1-32

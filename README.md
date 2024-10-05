@@ -22,7 +22,7 @@ pri-dns {
 
     # 存储介质配置，目前只支持MySQL，所以为必填项
     mysql {
-        dataSourceName root:123456@tcp(127.0.0.1:3306)/db_pridns?parseTime=true&loc=Asia%2FShanghai
+        dataSourceName DATA_SOURCE_NAME
     }
 
     # 当需要使用 DNS of TLS 时，可以配置 TLS 相关证书所需。如果需要访问多个 TLS 服务时可以重复定义多个
@@ -37,12 +37,9 @@ pri-dns {
     }
     health_check 10s # 所有上游的健康检查配置。配置和语义与 forward 插件相同
 }
-pri-dns {
-    dataSourceName DATA_SOURCE_NAME
-}
 ```
 
-- `DATA_SOURCE_NAME` 数据库连接串，只支持*MySQL*。由于该插件的设计目的是面向多个普通用户的，这意味着需要存储大量数据，并且这些数据需要很轻松地随时更改，所以用数据库来存储这些数据。
+- `DATA_SOURCE_NAME` 数据库连接串，只支持*MySQL*（格式示例：`root:123456@tcp(127.0.0.1:3306)/db_pridns?parseTime=true&loc=Asia%2FShanghai`）。由于该插件的设计目的是面向多个普通用户的，这意味着需要存储大量数据，并且这些数据需要很轻松地随时更改，所以用数据库来存储这些数据。
 
 ## Metrics
 
