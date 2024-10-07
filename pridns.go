@@ -238,7 +238,7 @@ func filterDomain(domains []db.Domain) map[string][]db.Domain {
 // 根据域名匹配规则比较 a 和 b 的优先级，优先级为：私有解析 > 全局解析; 精准匹配 > 泛解析; 精度高的泛解析 > 精度低的泛解析，
 // 如果 a 优先级高于 b，则返回 1；如果 a 和 b 优先级相同则返回 0；如果 a 优先级低于 b 则返回 -1
 func matchPriorityCompare(a, b db.RecordFilter) int {
-	// 私有解析 > 全局解析
+	// 私有 > 全局
 	if a.ClientHostVal() != "" && b.ClientHostVal() == "" {
 		return 1
 	}
@@ -247,14 +247,14 @@ func matchPriorityCompare(a, b db.RecordFilter) int {
 	}
 	aName := a.NameVal()
 	bName := b.NameVal()
-	// 精准匹配 > 泛解析
+	// 精准解析 > 泛解析
 	if !strings.Contains(aName, "*") && strings.Contains(bName, "*") {
 		return 1
 	}
 	if strings.Contains(aName, "*") && !strings.Contains(bName, "*") {
 		return -1
 	}
-	// 精度高的泛解析 > 精度低的泛解析
+	// 高精度 > 低精度
 	if len(aName) > len(bName) {
 		return 1
 	}
@@ -331,13 +331,13 @@ func handForward(d *PriDns, ctx context.Context, state request.Request) (ok bool
 	if len(forwards) == 0 {
 		return
 	}
-	// 根据优先级找到最合适的个转发配置（相同的”转发配置“只能由一个，所以这里有且只有一个结果）
+	// 根据优先级找到最合适的个转发配置
 	forward := filterRecord(forwards)
 	if forward.DenyGlobal {
 		log.Debug("没有有效的转发记录")
 		return
 	}
-	log.Debugf("将域名转发给 %v 处理", forward.DnsSvr)
+	log.Debugf("解析转发: %s => %v", qname, forward.DnsSvr)
 	ok = true
 
 	// 查询对应的 Proxy 实例
@@ -349,12 +349,11 @@ func handForward(d *PriDns, ctx context.Context, state request.Request) (ok bool
 	}
 
 	// 转发请求
-	code2, err2, rrs := myForward.Run(proxies, ctx, state)
-	code = code2
-	err = err2
+	var rrs []string
+	code, err, rrs = myForward.Run(proxies, ctx, state)
 
 	if rrs != nil {
-		log.Debugf("代理返回结果: %v", rrs)
+		log.Debugf("解析结果: %v", rrs)
 		// 存储解析历史
 		d.pushHisChan <- address{name: forwards[0].Name, ads: rrs}
 	}
