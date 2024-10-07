@@ -238,13 +238,6 @@ func filterDomain(domains []db.Domain) map[string][]db.Domain {
 // 根据域名匹配规则比较 a 和 b 的优先级，优先级为：私有解析 > 全局解析; 精准匹配 > 泛解析; 精度高的泛解析 > 精度低的泛解析，
 // 如果 a 优先级高于 b，则返回 1；如果 a 和 b 优先级相同则返回 0；如果 a 优先级低于 b 则返回 -1
 func matchPriorityCompare(a, b db.RecordFilter) int {
-	// 私有 > 全局
-	if a.ClientHostVal() != "" && b.ClientHostVal() == "" {
-		return 1
-	}
-	if a.ClientHostVal() == "" && b.ClientHostVal() != "" {
-		return -1
-	}
 	aName := a.NameVal()
 	bName := b.NameVal()
 	// 精准解析 > 泛解析
@@ -259,6 +252,13 @@ func matchPriorityCompare(a, b db.RecordFilter) int {
 		return 1
 	}
 	if len(aName) < len(bName) {
+		return -1
+	}
+	// 私有 > 全局
+	if a.ClientHostVal() != "" && b.ClientHostVal() == "" {
+		return 1
+	}
+	if a.ClientHostVal() == "" && b.ClientHostVal() != "" {
 		return -1
 	}
 	return 0
