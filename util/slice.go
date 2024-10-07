@@ -9,15 +9,6 @@ var (
 	rn = rand.New(time.Now().UnixNano())
 )
 
-// SliceRemoveItem 删除切片中指定位置的元素，相比于常用的 `s = append(s[:i], s[i+1:]...)` 具有更高的效率
-func SliceRemoveItem[T any](s []T, i int) []T {
-	l := len(s) - 1
-	for i := i; i < l; i++ {
-		s[i] = s[i+1]
-	}
-	return s[:l]
-}
-
 // SliceRandom 返回经过乱序后的 p
 func SliceRandom[T any](p []T) []T {
 	switch len(p) {
@@ -52,4 +43,24 @@ func SliceDeduplication[T comparable](ts []T) []T {
 		i++
 	}
 	return ts[:i]
+}
+
+// SliceEqual 比较切片元素的值是否相等，忽略切片元素的顺序
+func SliceEqual[T comparable](a, b []T) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for _, v := range a {
+		found := false
+		for _, v2 := range b {
+			if v == v2 {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+	return true
 }
