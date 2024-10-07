@@ -170,30 +170,33 @@ func (d *PriDns) RegisterCloseHook(f func()) func() {
 }
 
 // filterRecord 根据查询域名 qname 及优先级找一个最佳的
-func filterRecord(records []db.Forward) db.Forward {
-	if len(records) == 0 {
-		panic("需要过滤的数据不能为空")
-	}
-
-	t := records[0]
-	for i := 1; i < len(records); i++ {
-		if matchPriorityCompare(records[i], t) > 0 {
-			t = records[i]
+func filterRecord(records []db.Forward) *db.Forward {
+	var t *db.Forward
+	for i := range records {
+		record := &records[i]
+		if !record.Enable {
+			continue
+		}
+		if t == nil {
+			t = record
+			continue
+		}
+		if matchPriorityCompare(record, t) > 0 {
+			t = record
 		}
 	}
 
 	return t
 }
 
-// filterDomain 根据查询域名 qname 及优先级找最佳的解析，同一个域名的解析记录可能由多个
+// filterDomain 根据查询域名 qname 及优先级找最佳的解析，同一个域名的解析记录可能有多个
 func filterDomain(domains []db.Domain) map[string][]db.Domain {
-	if len(domains) == 0 {
-		return nil
-	}
-
-	// 根据解析类型分类（A、AAAA等）
+	// 根据解析类型分类（A、AAAA等）并排除禁用的
 	domainByDnsType := make(map[string][]db.Domain)
 	for _, domain := range domains {
+		if !domain.Enable {
+			continue
+		}
 		if domainByDnsType[domain.DnsType] == nil {
 			domainByDnsType[domain.DnsType] = []db.Domain{domain}
 		} else {
@@ -201,7 +204,7 @@ func filterDomain(domains []db.Domain) map[string][]db.Domain {
 		}
 	}
 
-	// 每个分类中，根据优先级选择最匹配的解析记录，优先级为：私有解析 > 全局解析; 精准匹配 > 泛解析; 精度高的泛解析 > 精度低的泛解析
+	// 每个分类中，根据优先级选择最匹配的解析记录，优先级为：精准解析 > 泛解析; 高精度 > 低精度; 私有 > 全局
 	for dnsType, items := range domainByDnsType {
 		if len(items) <= 1 {
 			continue
@@ -223,7 +226,7 @@ func filterDomain(domains []db.Domain) map[string][]db.Domain {
 		}
 		domainByDnsType[dnsType] = slice
 	}
-	// 如果由拒绝策略，则忽略
+	// 如果有拒绝策略，则忽略
 	for dnsType, items := range domainByDnsType {
 		for _, item := range items {
 			if item.DenyGlobal {
@@ -282,9 +285,6 @@ func handQuery(d *PriDns, state request.Request) []dns.RR {
 
 	// 一次查询私有解析（clientHost 对应的数据）和全局解析（clientHost 对空的数据）
 	domains := d.Store.FindDomainByHostAndName(state.IP(), qname)
-	if len(domains) == 0 {
-		return nil
-	}
 	// 根据优先级找到最匹配的一个
 	domainByType := filterDomain(domains)
 	if len(domainByType) == 0 {
@@ -333,7 +333,7 @@ func handForward(d *PriDns, ctx context.Context, state request.Request) (ok bool
 	}
 	// 根据优先级找到最合适的个转发配置
 	forward := filterRecord(forwards)
-	if forward.DenyGlobal {
+	if forward == nil || forward.DenyGlobal {
 		log.Debug("没有有效的转发记录")
 		return
 	}

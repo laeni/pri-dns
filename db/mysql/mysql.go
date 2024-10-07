@@ -41,7 +41,7 @@ func (s *StoreMysql) FindForwardByHostAndName(host, name string) []db.Forward {
 			Name:       temp.Name,
 			DnsSvr:     snsSvr,
 			DenyGlobal: strings.ToUpper(temp.DenyGlobal) == "Y",
-			Status:     temp.Status,
+			Enable:     strings.ToUpper(temp.Enable) == "Y",
 			CreateTime: temp.CreateTime,
 			UpdateTime: temp.UpdateTime,
 		}
@@ -66,7 +66,7 @@ func (s *StoreMysql) FindDomainByHostAndName(host, name string) []db.Domain {
 			Ttl:        temp.Ttl.Int32,
 			DnsType:    temp.DnsType.String,
 			DenyGlobal: strings.ToUpper(temp.DenyGlobal) == "Y",
-			Status:     temp.Status,
+			Enable:     strings.ToUpper(temp.Enable) == "Y",
 			CreateTime: temp.CreateTime,
 			UpdateTime: temp.UpdateTime,
 		}
@@ -137,7 +137,7 @@ func (s *StoreMysql) FindHistoryByHost(host string) ([]string, []string) {
 
 	// 查询全局和客户端对应的转发域名
 	var forwards []Forward
-	err := tx.Where("status = 'ENABLE' AND (client_host IS NULL OR client_host = '' OR client_host = ?)", host).Find(&forwards).Error
+	err := tx.Where("enable = 'Y' AND (client_host IS NULL OR client_host = '' OR client_host = ?)", host).Find(&forwards).Error
 	if err != nil {
 		panic(err)
 	}

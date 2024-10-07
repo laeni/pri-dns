@@ -34,7 +34,7 @@ type Domain struct {
 	Ttl        int32           // TTL
 	DnsType    string          // 记录类型。<br />A | AAAA
 	DenyGlobal bool            // 是否拒绝全局解析
-	Status     string          // 状态。<br />ENABLE-启用
+	Enable     bool            // 是否启用
 	CreateTime types.LocalTime // 创建时间
 	UpdateTime types.LocalTime // 修改时间
 }
@@ -56,7 +56,7 @@ type Forward struct {
 	Name       string          // 需要转发解析的域名
 	DnsSvr     []string        // 转发目标DNS服务器
 	DenyGlobal bool            // 是否拒绝全局解析
-	Status     string          // 状态。<br />ENABLE-启用
+	Enable     bool            // 是否启用
 	CreateTime types.LocalTime // 创建时间
 	UpdateTime types.LocalTime // 修改时间
 }
@@ -73,9 +73,7 @@ func (f Forward) DenyGlobalVal() bool {
 
 // History 转发解析历史.
 type History struct {
-	ID int64
-	// 需要转发解析的域名
-	Name string
-	// 解析记录，用于导出使用
-	History []string
+	ID      int64
+	Name    string   // 需要转发解析的域名
+	History []string // 解析记录，用于导出使用
 }
